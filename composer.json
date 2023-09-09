@@ -1,0 +1,19 @@
+{
+    "name": "debva/nix",
+    "description": "PHP Framework",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Debva\\Nix\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "wildhandb",
+            "email": "wildhan.db@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {}
+}

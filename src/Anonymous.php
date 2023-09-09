@@ -2,6 +2,7 @@
 
 namespace Debva\Nix;
 
-class Database
+class Anonymous extends Macro
 {
+
 }

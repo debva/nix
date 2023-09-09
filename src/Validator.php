@@ -2,6 +2,6 @@
 
 namespace Debva\Nix;
 
-class Database
+class Validator
 {
 }

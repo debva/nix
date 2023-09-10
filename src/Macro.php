@@ -20,6 +20,6 @@ abstract class Macro
             }
         }
 
-        die("Method [$method] does not exist.");
+        throw new \Exception("Method [$method] does not exist.");
     }
 }

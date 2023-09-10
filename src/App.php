@@ -10,16 +10,15 @@ class App extends Core
 
     public $service;
 
-    public $code = 200;
-
     public function __construct()
     {
         parent::__construct();
 
         $envpath = join(DIRECTORY_SEPARATOR, [getcwd(), '..', '.env']);
+
         if (file_exists($envpath)) {
             $env = file_get_contents($envpath);
-            $lines = explode(PHP_EOL, $env);
+            $lines = preg_split('/\r\n|\r|\n/', $env);
 
             foreach ($lines as $line) {
                 $line = trim($line);
@@ -35,6 +34,9 @@ class App extends Core
                     $_ENV[$name] = $value;
                 }
             }
+        } else {
+            $defaultenvpath = join(DIRECTORY_SEPARATOR, [__DIR__, '..', '.env.example']);
+            copy($defaultenvpath, $envpath);
         }
 
         set_exception_handler(function ($exception) {
@@ -47,12 +49,12 @@ class App extends Core
                     'file'      => $exception->getFile(),
                     'line'      => $exception->getLine(),
                     'trace'     => $exception->getTrace()
-                ]);
+                ], $exception->getCode(), true);
             } else {
                 $this->response([
                     'code'      => 500,
                     'message'   => $exception->getMessage()
-                ]);
+                ], 500, true);
             }
 
             exit;
@@ -64,7 +66,7 @@ class App extends Core
 
         date_default_timezone_set($this->env('DATE_TIMEZONE', 'Asia/Jakarta'));
 
-        define('FRAMEWORK_VERSION', 'v1.0.0');
+        define('FRAMEWORK_VERSION', '1.0.0');
         define('APP_VERSION', $this->env('APP_VERSION', '1.0.0'));
 
         $requestPath = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
@@ -91,10 +93,12 @@ class App extends Core
 
                 $response = $action(...array_values($this->request()));
 
-                if (is_array($response)) return $this->response($response, $this->code);
-                return print(strval($response));
+                if ($response === get_parent_class(__CLASS__)) return $response;
+                else return print($response);
             });
         }
+
+        throw new \Exception('Invalid API', 400);
     }
 
 
@@ -110,9 +114,14 @@ class App extends Core
 
         foreach ($middlewares as $index => $middleware) {
             $middleware = require_once($middleware);
+
+            if (!is_callable($middleware)) throw new \Exception('Middleware is not callable!', 500);
+
             $next = isset($middlewares[$index + 1]) ? $middlewares[$index + 1] : $action;
-            return $middleware($this->request(), $next);
+            return $middleware($next);
         }
+
+        return $action();
     }
 
     private function service()
@@ -130,8 +139,8 @@ class App extends Core
             require_once($service);
             $name = strtolower(preg_replace('/([a-z])([A-Z])|-/', '$1_$2', basename($service, '.php')));
             $serviceClassName = basename($service, '.php');
-            $class->macro($name, function () use ($serviceClassName) {
-                return new $serviceClassName;
+            $class->macro($name, function (...$args) use ($serviceClassName) {
+                return new $serviceClassName(...$args);
             });
         }
 

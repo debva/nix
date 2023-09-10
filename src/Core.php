@@ -6,8 +6,12 @@ class Core
 {
     public $http;
 
+    private $loadtime;
+
     public function __construct()
     {
+        $this->loadtime = microtime(true);
+
         $this->http = new Http;
     }
 
@@ -67,7 +71,7 @@ class Core
         http_response_code($code);
         header("Access-Control-Allow-Origin: {$this->env('ACCESS_CONTROL_ALLOW_ORIGIN', '*')}");
         header("Access-Control-Allow-Methods: {$this->env('ACCESS_CONTROL_ALLOW_METHODS', 'GET, POST, DELETE, OPTIONS')}");
-        header("Access-Control-Allow-Headers: {$this->env('ACCESS_CONTROL_ALLOW_HEADERS', 'Content-Type')}");
+        header("Access-Control-Allow-Headers: {$this->env('ACCESS_CONTROL_ALLOW_HEADERS', '*')}");
         header('Content-Type: application/json; charset=utf-8');
 
         if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") {
@@ -85,16 +89,39 @@ class Core
 
         if ($gzip) ini_set('zlib.output_compression', 'on');
 
-        return print(json_encode($data));
+        print(json_encode($data));
+        return __CLASS__;
     }
 
     public function query($query, $bindings = [], $connection = null)
     {
-        return (new Database($connection))->query($query, $bindings);
+        if ($connection) $connection = '_' . strtoupper($connection);
+
+        $dsn = [
+            getenv("DB{$connection}_CONNECTION"),
+            getenv("DB{$connection}_HOST"),
+            getenv("DB{$connection}_PORT"),
+            getenv("DB{$connection}_DATABASE"),
+            getenv("DB{$connection}_USER"),
+            getenv("DB{$connection}_PASSWORD"),
+        ];
+
+        return (new Database(...$dsn))->query($query, $bindings);
     }
 
     public function telegram($token = null)
     {
         return new Telegram($token ? $token : $this->env('TELEGRAM_TOKEN', ''));
+    }
+
+    public function dump(...$vars)
+    {
+        var_dump(...$vars);
+        exit;
+    }
+
+    public function loadtime()
+    {
+        return microtime(true) - $this->loadtime;
     }
 }

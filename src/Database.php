@@ -21,6 +21,11 @@ class Database
         }
     }
 
+    public function raw($query, $bindings = [])
+    {
+        return [$this->database, $query, $bindings];
+    }
+
     public function query($query, $bindings = [])
     {
         try {

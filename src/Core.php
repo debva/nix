@@ -2,11 +2,17 @@
 
 namespace Debva\Nix;
 
-class Core
+abstract class Core
 {
     public $http;
 
-    private $loadtime;
+    public $datatable;
+
+    protected $path;
+
+    protected $requestPath;
+
+    protected $loadtime;
 
     public function __construct()
     {
@@ -26,14 +32,6 @@ class Core
         }
 
         return $value;
-    }
-
-    public function route($route = null, $query = [])
-    {
-        $host = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'];
-        $query = !empty($query) ? (strpos($route, '?') !== false ? '&' : '?') . http_build_query($query) : '';
-        $route = $route ? trim($route, '\/') : $this->requestPath;
-        return trim(join('/', [$host, $this->path, $route . $query]), '\/');
     }
 
     public function request($keys = null, $default = null)
@@ -68,7 +66,7 @@ class Core
 
     public function response($data, $code = 200, $gzip = false, $sanitize = false, $except_sanitize = [])
     {
-        http_response_code($code);
+        if (is_int($code)) http_response_code($code);
         header("Access-Control-Allow-Origin: {$this->env('ACCESS_CONTROL_ALLOW_ORIGIN', '*')}");
         header("Access-Control-Allow-Methods: {$this->env('ACCESS_CONTROL_ALLOW_METHODS', 'GET, POST, DELETE, OPTIONS')}");
         header("Access-Control-Allow-Headers: {$this->env('ACCESS_CONTROL_ALLOW_HEADERS', '*')}");
@@ -93,7 +91,7 @@ class Core
         return __CLASS__;
     }
 
-    public function query($query, $bindings = [], $connection = null)
+    public function database($connection = null)
     {
         if ($connection) $connection = '_' . strtoupper($connection);
 
@@ -106,7 +104,17 @@ class Core
             getenv("DB{$connection}_PASSWORD"),
         ];
 
-        return (new Database(...$dsn))->query($query, $bindings);
+        return new Database(...$dsn);
+    }
+
+    public function query($query, $bindings = [], $connection = null)
+    {
+        return $this->database($connection)->query($query, $bindings);
+    }
+
+    public function datatable($data)
+    {
+        return new Datatable($data);
     }
 
     public function telegram($token = null)

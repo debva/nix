@@ -4,17 +4,13 @@ namespace Debva\Nix;
 
 class App extends Core
 {
-    protected $path;
-
-    protected $requestPath;
-
     public $service;
 
     public function __construct()
     {
         parent::__construct();
 
-        $envpath = join(DIRECTORY_SEPARATOR, [getcwd(), '..', '.env']);
+        $envpath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', '.env']);
 
         if (file_exists($envpath)) {
             $env = file_get_contents($envpath);
@@ -35,7 +31,7 @@ class App extends Core
                 }
             }
         } else {
-            $defaultenvpath = join(DIRECTORY_SEPARATOR, [__DIR__, '..', '.env.example']);
+            $defaultenvpath = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', '.env.example']);
             copy($defaultenvpath, $envpath);
         }
 
@@ -83,7 +79,7 @@ class App extends Core
         if (reset($path) === 'api') {
             return $this->middleware(function () use ($path) {
                 array_shift($path);
-                $actionPath = join('.', [join(DIRECTORY_SEPARATOR, array_merge([getcwd(), '..', 'server', 'api'], $path)), 'php']);
+                $actionPath = implode('.', [implode(DIRECTORY_SEPARATOR, array_merge([getcwd(), '..', 'server', 'api'], $path)), 'php']);
 
                 if (!file_exists($actionPath)) throw new \Exception('API not found!', 404);
 
@@ -105,11 +101,11 @@ class App extends Core
     private function middleware(\Closure $action)
     {
         $middlewares = [];
-        $middlewarePath = join(DIRECTORY_SEPARATOR, [getcwd(), '..', 'server', 'middleware']);
+        $middlewarePath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', 'server', 'middleware']);
 
         if (!is_dir($middlewarePath)) return $action();
 
-        $middlewares = glob(join(DIRECTORY_SEPARATOR, [$middlewarePath, '*.php']));
+        $middlewares = glob(implode(DIRECTORY_SEPARATOR, [$middlewarePath, '*.php']));
         $middlewares = array_filter($middlewares, 'file_exists');
 
         foreach ($middlewares as $index => $middleware) {
@@ -128,10 +124,10 @@ class App extends Core
     {
         $class = new Anonymous;
         $services = [];
-        $servicePath = join(DIRECTORY_SEPARATOR, [getcwd(), '..', 'server', 'service']);
+        $servicePath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', 'server', 'service']);
 
         if (is_dir($servicePath)) {
-            $services = glob(join(DIRECTORY_SEPARATOR, [$servicePath, '*.php']));
+            $services = glob(implode(DIRECTORY_SEPARATOR, [$servicePath, '*.php']));
             $services = array_filter($services, 'file_exists');
         }
 

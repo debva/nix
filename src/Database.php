@@ -23,7 +23,13 @@ class Database
 
     public function raw($query, $bindings = [])
     {
-        return [$this->database, $query, $bindings];
+        $class = new Anonymous;
+        foreach (['connection' => $this->database, 'query' => $query, 'bindings' => $bindings] as $method => $value) {
+            $class->macro($method, function () use ($value) {
+                return $value;
+            });
+        }
+        return $class;
     }
 
     public function query($query, $bindings = [])

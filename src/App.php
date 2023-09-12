@@ -79,9 +79,13 @@ class App extends Core
         if (reset($path) === 'api') {
             return $this->middleware(function () use ($path) {
                 array_shift($path);
-                $actionPath = implode('.', [implode(DIRECTORY_SEPARATOR, array_merge([getcwd(), '..', 'server', 'api'], $path)), 'php']);
+                $basePath = implode(DIRECTORY_SEPARATOR, array_merge([getcwd(), '..', 'server', 'api'], $path));
+                $actionPath = implode('.', [$basePath, 'php']);
 
-                if (!file_exists($actionPath)) throw new \Exception('API not found!', 404);
+                if (!file_exists($actionPath)) {
+                    $actionPath = implode(DIRECTORY_SEPARATOR, [$basePath, 'index.php']);
+                    if (!file_exists($actionPath)) throw new \Exception('API not found!', 404);
+                }
 
                 $action = require_once($actionPath);
 
@@ -132,11 +136,11 @@ class App extends Core
         }
 
         foreach ($services as $service) {
-            require_once($service);
-            $name = strtolower(preg_replace('/([a-z])([A-Z])|-/', '$1_$2', basename($service, '.php')));
-            $serviceClassName = basename($service, '.php');
-            $class->macro($name, function (...$args) use ($serviceClassName) {
-                return new $serviceClassName(...$args);
+            $serviceClass = basename($service, '.php');
+            $name = strtolower(preg_replace('/([a-z])([A-Z])|-/', '$1_$2', $serviceClass));
+            $class->macro($name, function (...$args) use ($service, $serviceClass) {
+                require_once($service);
+                return new $serviceClass(...$args);
             });
         }
 

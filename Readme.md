@@ -54,7 +54,7 @@ server/api/user.php
 
 return function() {
     return $this->response('Hello World');
-}
+};
 ```
 see result
 ```

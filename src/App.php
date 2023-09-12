@@ -66,7 +66,7 @@ class App extends Core
         define('APP_VERSION', $this->env('APP_VERSION', '1.0.0'));
 
         $requestPath = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
-        $this->path = trim($this->env('APP_PATH'), '/');
+        $this->path = $this->env('APP_PATH') ? trim($this->env('APP_PATH'), '/') : '';
         $this->requestPath = trim(str_replace($this->path, '', $requestPath), '/');
 
         $this->service = $this->service();

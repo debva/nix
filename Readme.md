@@ -58,7 +58,7 @@ return function() {
 ```
 see result
 ```
-http://localhost/public/api/v1/user
+http://localhost/api/v1/user
 ```
 
 ## Available Method

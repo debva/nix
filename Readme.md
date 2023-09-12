@@ -14,27 +14,60 @@ NIX PHP Framework is a lightweight, secure, and versatile PHP framework designed
 
 Install with composer
 
-```bash
+```
 composer require debva/nix
 ```
+## Structure
+
+- **public/**: This folder contains files that can be accessed publicly through the web server. It includes the .htaccess file and index.php.
+
+- **server/**: This folder houses the server-side components of the project.
+    - **api/**: This folder contains the code for the project's API.
+    - **middleware/**: This folder contains middleware used in the project.
+    - **service/**: This folder contains services used in the project.
+
+Feel free to adapt this folder structure template to your project. 
     
 ## Usage
 
-.htaccess
-```htaccess
+public/.htaccess
+```
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php [L,QSA]
 ```
 
-index.php
-```php
+public/index.php
+```
 <?php
 
 require_once(join(DIRECTORY_SEPARATOR, [__DIR__, '..', 'vendor', 'autoload.php']));
 
 $app = new Debva\Nix\App;
 $app();
-
 ```
+
+server/api/user.php
+```
+<?php
+
+return function() {
+    return $this->response('Hello World');
+}
+```
+see result
+```
+http://localhost/public/api/v1/user
+```
+
+## Available Method
+| Method | Parameter | Description 
+| -------| --------- | ----------- 
+| $this->request() |  
+| $this->response() | 
+| $this->route() | 
+| $this->database() |
+| $this->query() | 
+| $this->datatable() | 
+| $this->telegram() | 

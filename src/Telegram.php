@@ -30,8 +30,7 @@ class Telegram
 
             throw new \Exception('Endpoint not found');
         } catch (\Exception $e) {
-            echo $e->getMessage();
-            return $e->getMessage();
+            throw new \Exception($e->getMessage(), 500);
         }
     }
 
@@ -58,10 +57,10 @@ class Telegram
                     'header'  => "Content-type: application/x-www-form-urlencoded"
                 ]
             ]));
+            
             return json_decode($response);
         } catch (\Exception $e) {
-            echo $e->getMessage();
-            return $e->getMessage();
+            throw new \Exception($e->getMessage(), 500);
         }
     }
 

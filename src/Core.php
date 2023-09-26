@@ -123,7 +123,7 @@ abstract class Core extends Environment
         return new Telegram($token ? $token : $this->env('TELEGRAM_TOKEN', ''));
     }
 
-    public function dump(...$vars)
+    public function dd(...$vars)
     {
         var_dump(...$vars);
         exit;

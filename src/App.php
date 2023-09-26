@@ -43,7 +43,6 @@ class App extends Core
     public function __invoke()
     {
         $path = array_filter(explode('/', $this->requestPath));
-
         $basePath = implode(DIRECTORY_SEPARATOR, array_merge([getcwd(), '..', 'app', 'routes'], $path));
         $actionPath = implode('.', [$basePath, 'php']);
 
@@ -56,12 +55,16 @@ class App extends Core
                 return $this->response($action());
             }
 
-            if (!file_exists($actionPath)) throw new \Exception('Route not found!', 404);
+            if (!file_exists($actionPath)) {
+                throw new \Exception('Route not found!', 404);
+            }
         }
 
         $action = require_once($actionPath);
 
-        if (!is_callable($action)) throw new \Exception('Route is not callable!', 500);
+        if (!is_callable($action)) {
+            throw new \Exception('Route is not callable!', 500);
+        }
 
         return $this->middleware(function () use ($action) {
             return $action(...array_values($this->request()));

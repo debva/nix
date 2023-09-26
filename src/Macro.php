@@ -16,7 +16,7 @@ abstract class Macro
         if (isset($this->macros[$method])) {
             $macro = $this->macros[$method];
             if (is_callable($macro)) {
-                return call_user_func_array($macro, $args);
+                return $macro($this, ...$args);
             }
         }
 

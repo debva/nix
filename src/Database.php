@@ -21,6 +21,21 @@ class Database
         }
     }
 
+    public function beginTransaction()
+    {
+        return $this->database->beginTransaction();
+    }
+
+    public function commit()
+    {
+        return $this->database->commit();
+    }
+
+    public function rollBack()
+    {
+        return $this->database->rollBack();
+    }
+
     public function raw($query, $bindings = [])
     {
         $class = new Anonymous;
@@ -34,15 +49,13 @@ class Database
 
     public function query($query, $bindings = [])
     {
-        try {
-            $this->database->beginTransaction();
-            $statement = $this->database->prepare($query);
-            $statement->execute($bindings);
-            $this->database->commit();
-            return $statement;
-        } catch (\PDOException $e) {
-            $this->database->rollBack();
-            throw new \PDOException($e->getMessage());
-        }
+        $statement = $this->database->prepare($query);
+        $statement->execute($bindings);
+        return $statement;
+    }
+
+    public function transaction(\Closure $transaction)
+    {
+        return $transaction($this);
     }
 }

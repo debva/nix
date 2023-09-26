@@ -6,34 +6,11 @@ class App extends Core
 {
     public $service;
 
+    const FRAMEWORK_VERSION = '1.5.0';
+
     public function __construct()
     {
         parent::__construct();
-
-        $envpath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', '.env']);
-
-        if (!file_exists($envpath)) {
-            $defaultenvpath = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', '.env.example']);
-            copy($defaultenvpath, $envpath);
-        }
-
-        $env = file_get_contents($envpath);
-        $lines = preg_split('/\r\n|\r|\n/', $env);
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-
-            if (!$line || strpos($line, '#') === 0) continue;
-            list($name, $value) = explode('=', $line, 2);
-
-            $name = trim($name);
-            $value = trim($value, "\"");
-
-            if (!array_key_exists($name, $_ENV) && !array_key_exists($name, $_SERVER)) {
-                putenv(sprintf('%s=%s', $name, $value));
-                $_ENV[$name] = $value;
-            }
-        }
 
         set_exception_handler(function ($exception) {
             if ($this->env('APP_DEBUG', true)) {
@@ -60,85 +37,82 @@ class App extends Core
             throw new \ErrorException($errstr, 500, $errno, $errfile, $errline);
         });
 
-        date_default_timezone_set($this->env('DATE_TIMEZONE', 'Asia/Jakarta'));
-
-        define('FRAMEWORK_VERSION', '1.0.0');
-        define('APP_VERSION', $this->env('APP_VERSION', '1.0.0'));
-
-        $requestPath = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
-        $this->path = $this->env('APP_PATH') ? trim($this->env('APP_PATH'), '/') : '';
-        $this->requestPath = trim(str_replace($this->path, '', $requestPath), '/');
-
         $this->service = $this->service();
     }
 
     public function __invoke()
     {
-        $path = explode('/', $this->requestPath);
+        $path = array_filter(explode('/', $this->requestPath));
 
-        if (reset($path) === 'api') {
-            return $this->middleware(function () use ($path) {
-                array_shift($path);
-                $basePath = implode(DIRECTORY_SEPARATOR, array_merge([getcwd(), '..', 'server', 'api'], $path));
-                $actionPath = implode('.', [$basePath, 'php']);
+        $basePath = implode(DIRECTORY_SEPARATOR, array_merge([getcwd(), '..', 'app', 'routes'], $path));
+        $actionPath = implode('.', [$basePath, 'php']);
 
-                if (!file_exists($actionPath)) {
-                    $actionPath = implode(DIRECTORY_SEPARATOR, [$basePath, 'index.php']);
-                    if (!file_exists($actionPath)) throw new \Exception('API not found!', 404);
-                }
+        if (!file_exists($actionPath)) {
+            $actionPath = implode(DIRECTORY_SEPARATOR, [$basePath, 'index.php']);
 
+            if (!file_exists($actionPath) && empty($path)) {
+                $actionPath = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', 'routes', 'welcome.php']);
                 $action = require_once($actionPath);
+                return $this->response($action());
+            }
 
-                if (!is_callable($action)) throw new \Exception('API is not callable!', 500);
-
-                $response = $action(...array_values($this->request()));
-
-                if ($response === get_parent_class(__CLASS__)) return $response;
-                else return print($response);
-            });
+            if (!file_exists($actionPath)) throw new \Exception('Route not found!', 404);
         }
 
-        throw new \Exception('Invalid API', 400);
-    }
+        $action = require_once($actionPath);
 
+        if (!is_callable($action)) throw new \Exception('Route is not callable!', 500);
+
+        return $this->middleware(function () use ($action) {
+            return $action(...array_values($this->request()));
+        });
+    }
 
     private function middleware(\Closure $action)
     {
         $middlewares = [];
-        $middlewarePath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', 'server', 'middleware']);
+        $middlewarePath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', 'app', 'middlewares']);
 
         if (!is_dir($middlewarePath)) return $action();
+        $middlewares = array_filter(glob(implode(DIRECTORY_SEPARATOR, [$middlewarePath, '*.php'])), 'file_exists');
 
-        $middlewares = glob(implode(DIRECTORY_SEPARATOR, [$middlewarePath, '*.php']));
-        $middlewares = array_filter($middlewares, 'file_exists');
+        $next = function ($middlewares) use (&$next, &$middleware, $action) {
+            if (!empty($middlewares)) {
+                $file = array_shift($middlewares);
+                if (file_exists($file)) {
+                    $middleware = require_once($file);
+                    $middleware = $middleware($next);
 
-        foreach ($middlewares as $index => $middleware) {
-            $middleware = require_once($middleware);
+                    if ($middleware instanceof \Closure && !empty($middlewares)) {
+                        return $next($middlewares);
+                    }
+                }
+            }
 
-            if (!is_callable($middleware)) throw new \Exception('Middleware is not callable!', 500);
+            if (!$middleware instanceof \Closure) $action = $middleware;
+            else $action = $action();
 
-            $next = isset($middlewares[$index + 1]) ? $middlewares[$index + 1] : $action;
-            return $middleware($next);
-        }
+            if (is_array($action)) return $this->response($action);
+            return print($action);
+        };
 
-        return $action();
+        return $next($middlewares);
     }
 
     private function service()
     {
         $class = new Anonymous;
         $services = [];
-        $servicePath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', 'server', 'service']);
+        $servicePath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', 'app', 'services']);
 
         if (is_dir($servicePath)) {
-            $services = glob(implode(DIRECTORY_SEPARATOR, [$servicePath, '*.php']));
-            $services = array_filter($services, 'file_exists');
+            $services = array_filter(glob(implode(DIRECTORY_SEPARATOR, [$servicePath, '*.php'])), 'file_exists');
         }
 
         foreach ($services as $service) {
             $serviceClass = basename($service, '.php');
             $name = strtolower(preg_replace('/([a-z])([A-Z])|-/', '$1_$2', $serviceClass));
-            $class->macro($name, function (...$args) use ($service, $serviceClass) {
+            $class->macro($name, function ($self, ...$args) use ($service, $serviceClass) {
                 require_once($service);
                 return new $serviceClass(...$args);
             });

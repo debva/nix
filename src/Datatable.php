@@ -12,42 +12,48 @@ class Datatable
 
     protected $total = 0;
 
-    protected $totalFiltered = 0;
+    protected $totalFiltered = false;
 
     protected $data = [];
+
+    protected $columns;
 
     public function __construct($data = [])
     {
         $this->loadtime = microtime(true);
 
-        $request = isset($_REQUEST['datatable'], $_REQUEST['datatable']['page'], $_REQUEST['datatable']['limit'])
-            ? $_REQUEST['datatable']
+        $request = new Request;
+        $request = $request();
+
+        $request = isset($request['datatable'], $request['datatable']['page'], $request['datatable']['limit'])
+            ? $request['datatable']
             : ['page' => 1, 'limit' => 10];
 
         $this->limit = (int) $request['limit'];
-        $this->offset = ($request['page'] - 1) * $this->limit;
+        $this->page = (int) $request['page'];
+        $this->offset = ($this->page - 1) * $this->limit;
 
         if ($data instanceof Anonymous && $data->connection() instanceof \PDO) {
             $searchQuery = null;
-            if (isset($request['search']) && is_array($request['search'])) {
+            if (!empty($request['search']) && is_array($request['search'])) {
                 $searchQuery = [];
-                foreach ($request['search'] as $column => $value) $searchQuery[] = "{$column} LIKE '%{$value}%'";
+                foreach ($request['search'] as $column => $value) $searchQuery[] = '`' . implode('`.`', explode('.', $column)) . "` LIKE '%{$value}%'";
                 $searchQuery = implode(' OR ', $searchQuery);
                 $searchQuery = "({$searchQuery})";
             }
 
             $filterQuery = null;
-            if (isset($request['filter']) && is_array($request['filter'])) {
+            if (!empty($request['filter']) && is_array($request['filter'])) {
                 $filterQuery = [];
-                foreach ($request['filter'] as $column => $value) $filterQuery[] = "{$column} LIKE '%{$value}%'";
+                foreach ($request['filter'] as $column => $value) $filterQuery[] = '`' . implode('`.`', explode('.', $column)) . "` LIKE '%{$value}%'";
                 $filterQuery = implode(' AND ', $filterQuery);
                 $filterQuery = "({$filterQuery})";
             }
 
             $orderQuery = null;
-            if (isset($request['sort']) && is_array($request['sort'])) {
+            if (!empty($request['sort']) && is_array($request['sort'])) {
                 $orderQuery = [];
-                foreach ($request['sort'] as $column => $sort) $orderQuery[] = "{$column} " . strtoupper($sort);
+                foreach ($request['sort'] as $column => $sort) $orderQuery[] = '`' . implode('`.`', explode('.', $column)) . "` " . strtoupper($sort);
                 $orderQuery = implode(', ', $orderQuery);
                 $orderQuery = "ORDER BY {$orderQuery}";
             }
@@ -75,31 +81,88 @@ class Datatable
             $data->execute($database->bindings());
             $this->data = $data->fetchAll();
         } else {
-            $result = [];
+            $result = $data;
             $isFiltered = false;
 
-            $this->total = count($data);
-            $this->totalFiltered = count($result);
-            $this->data = $isFiltered ? $result : $data;
-        }
+            if (!empty($request['search']) && is_array($request['search'])) {
+                $isFiltered = true;
+                $search = array_filter($request['search'], 'strlen');
 
-        $this->loadtime = number_format(microtime(true) - $this->loadtime, 3, ',', '.');
+                if (!empty($search)) {
+                    $result = array_filter($result, function ($item) use ($search) {
+                        $results = [];
+                        foreach ($search as $column => $value) {
+                            if (isset($item[$column]) && strpos(strtolower($item[$column]), strtolower($value)) !== false) {
+                                $results[] = $value;
+                            }
+                        }
+
+                        if (!empty($results)) return $item;
+                    });
+                }
+            }
+
+            if (!empty($request['filter']) && is_array($request['filter'])) {
+                $isFiltered = true;
+                $filter = array_filter($request['filter'], 'strlen');
+
+                if (!empty($filter)) {
+                    foreach ($filter as $column => $value) {
+                        $result = array_filter($result, function ($item) use ($column, $value, $result) {
+                            if (isset($item[$column]) && strpos(strtolower($item[$column]), strtolower($value)) !== false) {
+                                return $item;
+                            }
+                        });
+                    }
+                }
+            }
+
+            if (!empty($request['sort']) && is_array($request['sort'])) {
+                $sort = array_filter($request['sort'], 'strlen');
+
+                if (!empty($sort)) {
+                    $args = [];
+                    $order = [
+                        'ASC'   => SORT_ASC,
+                        'DESC'  => SORT_DESC,
+                    ];
+
+                    foreach ($sort as $column => $sortBy) {
+                        $args[] = array_column($result, $column);
+                        $args[] = $order[strtoupper($sortBy)];
+                    }
+
+                    $args[] = &$result;
+                    array_multisort(...$args);
+                }
+            }
+
+            $this->total = count($data);
+            $this->totalFiltered = $isFiltered ? count($result) : false;
+            $this->data = array_slice($result, $this->offset, $this->limit);
+        }
     }
 
     public function columns($columns = [])
     {
-        return $columns;
+        $this->columns = $columns;
+        return $this;
     }
 
-    public function toArray()
+    public function response($code = 200, $gzip = false, $sanitize = false, $except_sanitize = [])
     {
-        return array_merge([
+        $this->loadtime = number_format(microtime(true) - $this->loadtime, 3, ',', '.');
+
+        $data = array_merge([
             'loadtime'      => $this->loadtime,
             'limit'         => $this->limit,
             'page'          => $this->page,
             'total'         => $this->total,
             'totalFiltered' => $this->totalFiltered,
             'data'          => $this->data
-        ], (!empty($this->columns()) ? ['columns' => $this->columns()] : []));
+        ], (!empty($this->columns) ? ['columns' => $this->columns] : []));
+
+        $response = new Response;
+        return $response($data, $code, $gzip, $sanitize, $except_sanitize);
     }
 }

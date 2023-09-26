@@ -2,9 +2,11 @@
 
 namespace Debva\Nix;
 
-abstract class Core
+abstract class Core extends Environment
 {
     public $http;
+
+    public $auth;
 
     public $datatable;
 
@@ -18,7 +20,17 @@ abstract class Core
     {
         $this->loadtime = microtime(true);
 
+        parent::__construct();
+
+        date_default_timezone_set($this->env('DATE_TIMEZONE', 'Asia/Jakarta'));
+
+        $requestPath = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+        $this->path = $this->env('APP_PATH', '') ? trim($this->env('APP_PATH', ''), '/') : '';
+        $this->requestPath = trim(str_replace($this->path, '', $requestPath), '/');
+
         $this->http = new Http;
+
+        $this->auth = new Authentication;
     }
 
     public function env($key, $default = null)
@@ -44,62 +56,28 @@ abstract class Core
 
     public function request($keys = null, $default = null)
     {
-        $request = $_REQUEST;
-
-        if (!empty($_FILES)) {
-            $request = array_merge($request, $_FILES);
-        }
-
-        if (!empty($body = file_get_contents("php://input")) and !is_null(json_decode($body, true))) {
-            $request = array_merge($request, json_decode($body, true));
-        }
-
-        if (!is_null($keys)) {
-            if (is_array($keys)) {
-                $result = array_intersect_key($request, array_flip($keys));
-                return empty($result) ? $default : $result;
-            }
-
-            return isset($request[$keys])
-                ? $request[$keys]
-                : (!is_null($default) ? $default : null);
-        }
-
-        return $request;
+        $request = new Request;
+        return $request($keys, $default);
     }
 
-    public function validate()
+    public function validate($rules, $options = [])
     {
+        $validator = new Validator($rules, $options);
+        return $validator();
     }
 
     public function response($data, $code = 200, $gzip = false, $sanitize = false, $except_sanitize = [])
     {
-        if (is_int($code)) http_response_code($code);
-        header("Access-Control-Allow-Origin: {$this->env('ACCESS_CONTROL_ALLOW_ORIGIN', '*')}");
-        header("Access-Control-Allow-Methods: {$this->env('ACCESS_CONTROL_ALLOW_METHODS', 'GET, POST, DELETE, OPTIONS')}");
-        header("Access-Control-Allow-Headers: {$this->env('ACCESS_CONTROL_ALLOW_HEADERS', '*')}");
-        header('Content-Type: application/json; charset=utf-8');
-
-        if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") {
-            header("HTTP/1.1 200 OK");
-            die();
-        }
-
-        if ($sanitize) {
-            foreach ($data as $key => $value) {
-                if (!in_array($key, $except_sanitize)) {
-                    $data[$key] = preg_replace(['/\>[^\S ]+/s', '/[^\S ]+\</s', '/(\s)+/s', '/<!--(.|\s)*?-->/'], ['>', '<', '\\1', ''], $value);
-                }
-            }
-        }
-
-        if ($gzip) ini_set('zlib.output_compression', 'on');
-
-        print(json_encode($data));
-        return __CLASS__;
+        $response = new Response;
+        return $response($data, $code, $gzip, $sanitize, $except_sanitize);
     }
 
-    public function database($connection = null)
+    public function bpjs($options, $isProduction = false)
+    {
+        return new BPJS($options, $isProduction);
+    }
+
+    public function db($connection = null)
     {
         if ($connection) $connection = '_' . strtoupper($connection);
 
@@ -117,7 +95,22 @@ abstract class Core
 
     public function query($query, $bindings = [], $connection = null)
     {
-        return $this->database($connection)->query($query, $bindings);
+        $db = $this->db($connection);
+        $db->beginTransaction();
+        try {
+            $result = $db->query($query, $bindings);
+            $db->commit();
+            return $result;
+        } catch (\PDOException $e) {
+            $db->rollBack();
+            throw new \PDOException($e->getMessage(), 500);
+        }
+    }
+
+    public function transaction(\Closure $transaction, $connection = null)
+    {
+        $db = $this->db($connection);
+        return $db->transaction($transaction);
     }
 
     public function datatable($data)

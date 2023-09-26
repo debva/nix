@@ -15,5 +15,7 @@
         }
     ],
     "minimum-stability": "stable",
-    "require": {}
+    "require": {
+        "nullpunkt/lz-string-php": "^1.0"
+    }
 }

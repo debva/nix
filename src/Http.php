@@ -4,7 +4,7 @@ namespace Debva\Nix;
 
 class Http
 {
-    public function get($url, $body = [], $headers = [])
+    public function get($url, $headers = [])
     {
         try {
             $curl = curl_init();
@@ -21,10 +21,10 @@ class Http
                 CURLOPT_CUSTOMREQUEST   => 'GET',
             ]);
 
-            if (!empty($body)) curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($body));
             if (!empty($headers)) curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
 
             $response = curl_exec($curl);
+            
             if (curl_errno($curl)) throw new \Exception(curl_error($curl));
             curl_close($curl);
 
@@ -34,7 +34,7 @@ class Http
         }
     }
 
-    public function post($url, $body = [], $headers = [])
+    public function post($url, $headers = [], $body = [])
     {
         try {
             $curl = curl_init();

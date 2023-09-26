@@ -67,7 +67,7 @@ http://localhost/api/v1/user
 | $this->request() |  
 | $this->response() | 
 | $this->route() | 
-| $this->database() |
+| $this->db() |
 | $this->query() | 
 | $this->datatable() | 
 | $this->telegram() | 

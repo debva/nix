@@ -18,21 +18,39 @@ class Request
 
         if (!is_null($keys)) {
             if (is_array($keys)) {
-                $result = [];
-                foreach ($keys as $key) {
-                    $req = $request;
-                    foreach (explode('.', $key) as $k) $req = isset($req[$k])
-                        ? $req[$k] : (!is_null($default) ? $default : null);
+                $results = [];
 
-                    $result[$key] = $req;
+                foreach ($keys as $key) {
+                    $result = [];
+                    $req = $request;
+                    $arrayRef = &$result;
+
+                    foreach (explode('.', $key) as $k) {
+                        $arrayRef = &$arrayRef[$k];
+                        $req = isset($req[$k])
+                            ? $req[$k]
+                            : (!is_null($default) ? $default : null);
+                    }
+
+                    $arrayRef = $req;
+                    $results[array_keys($result)[0]] = array_values($result)[0];
                 }
 
-                return $result;
+                return $results;
             }
 
-            foreach (explode('.', $keys) as $key) $request = isset($request[$key])
-                ? $request[$key]
-                : (!is_null($default) ? $default : null);
+            $result = [];
+            $arrayRef = &$result;
+
+            foreach (explode('.', $keys) as $key) {
+                $arrayRef = &$arrayRef[$key];
+                $request = isset($request[$key])
+                    ? $request[$key]
+                    : (!is_null($default) ? $default : null);
+            }
+
+            $arrayRef = $request;
+            return $result;
         }
 
         return $request;

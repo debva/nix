@@ -49,9 +49,11 @@ class BPJS
             (empty($body) ? 'Content-Type: application/json; charset=utf-8' : 'Content-Type: Application/x-www-form-urlencoded')
         ], $body);
 
-        if (isset($response['response'])) {
-            return $this->decrypt($response['response']);
+        if (array_key_exists('response', $response)) {
+            $response = array_merge($response, ['response' => $this->decrypt($response['response'])]);
         }
+        
+        return $response;
     }
 
     protected function createSignature()

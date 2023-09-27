@@ -2,6 +2,6 @@
 
 return function () {
     return [
-        'message' => 'Welcome to NIX v' . self::FRAMEWORK_VERSION
+        'message' => 'Welcome to NIX v' . FRAMEWORK_VERSION
     ];
 };

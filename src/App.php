@@ -6,8 +6,6 @@ class App extends Core
 {
     public $service;
 
-    const FRAMEWORK_VERSION = '1.5.0';
-
     public function __construct()
     {
         parent::__construct();
@@ -36,6 +34,9 @@ class App extends Core
         set_error_handler(function ($errno, $errstr, $errfile, $errline) {
             throw new \ErrorException($errstr, 500, $errno, $errfile, $errline);
         });
+
+        define('FRAMEWORK_VERSION', '1.5.0');
+        define('APP_VERSION', $this->env('APP_VERSION', '1.0.0'));
 
         $this->service = $this->service();
     }

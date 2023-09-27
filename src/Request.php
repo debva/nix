@@ -39,10 +39,11 @@ class Request
                 return $results;
             }
 
+            $keys = explode('.', $keys);
             $result = [];
             $arrayRef = &$result;
 
-            foreach (explode('.', $keys) as $key) {
+            foreach ($keys as $key) {
                 $arrayRef = &$arrayRef[$key];
                 $request = isset($request[$key])
                     ? $request[$key]
@@ -50,7 +51,7 @@ class Request
             }
 
             $arrayRef = $request;
-            return $result;
+            return $result[reset($keys)];
         }
 
         return $request;

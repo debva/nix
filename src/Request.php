@@ -33,7 +33,15 @@ class Request
                     }
 
                     $arrayRef = $req;
-                    $results[array_keys($result)[0]] = array_values($result)[0];
+
+                    $key = array_keys($result);
+                    $key = reset($key);
+
+                    $value = array_values($result);
+                    $value = reset($value);
+
+                    $results[$key] = (array_key_exists($key, $results) && is_array($results[$key]) && is_array($value))
+                        ? array_merge($results[$key], $value) : $value;
                 }
 
                 return $results;

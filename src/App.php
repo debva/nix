@@ -6,33 +6,31 @@ class App extends Core
 {
     public $service;
 
+    protected $middlewareFolderName = 'middleware';
+
+    protected $routeFolderName = 'routes';
+
+    protected $serviceFolderName = 'services';
+
     public function __construct()
     {
         parent::__construct();
 
-        set_exception_handler(function ($exception) {
-            if ($this->env('APP_DEBUG', true)) {
-                $this->response([
-                    'os'        => PHP_OS,
-                    'version'   => 'PHP ' . PHP_VERSION,
-                    'message'   => $exception->getMessage(),
-                    'code'      => $exception->getCode(),
-                    'file'      => $exception->getFile(),
-                    'line'      => $exception->getLine(),
-                    'trace'     => $exception->getTrace()
-                ], $exception->getCode(), true);
-            } else {
-                $this->response([
-                    'code'      => 500,
-                    'message'   => $exception->getMessage()
-                ], 500, true);
-            }
+        ini_set('display_errors', 'Off');
 
-            exit;
+        set_exception_handler(function ($e) {
+            $this->handleError('Exception', $e->getMessage(), $e->getCode(), $e->getFile(), $e->getLine(), $e->getTrace());
         });
 
-        set_error_handler(function ($errno, $errstr, $errfile, $errline) {
-            throw new \ErrorException($errstr, 500, $errno, $errfile, $errline);
+        set_error_handler(function ($errno, $message, $file, $line) {
+            $this->handleError('Error', $message, 500, $file, $line);
+        });
+
+        register_shutdown_function(function () {
+            $error = error_get_last();
+            if ($error !== null) {
+                $this->handleError('Fatal Error', $error['message'], 500, $error['file'], $error['line']);
+            }
         });
 
         define('FRAMEWORK_VERSION', '1.5.0');
@@ -44,14 +42,25 @@ class App extends Core
     public function __invoke()
     {
         $path = array_filter(explode('/', $this->requestPath));
-        $basePath = implode(DIRECTORY_SEPARATOR, array_merge([getcwd(), '..', 'app', 'routes'], $path));
+
+        if ($this->startsWith($queue = reset($path), '___queue')) {
+            if ($this->endsWith($queue, $this->env('QUEUE_ID', 'nix'))) {
+                $request = $this->request(['user', 'password']);
+                if ($request['user'] === $this->env('QUEUE_USER') && $request['password'] === $this->env('QUEUE_PASSWORD')) {
+                    $queue = new Queue;
+                    return $queue();
+                }
+            }
+        }
+
+        $basePath = implode(DIRECTORY_SEPARATOR, array_merge([getcwd(), '..', 'app', $this->routeFolderName], $path));
         $actionPath = implode('.', [$basePath, 'php']);
 
         if (!file_exists($actionPath)) {
             $actionPath = implode(DIRECTORY_SEPARATOR, [$basePath, 'index.php']);
 
             if (!file_exists($actionPath) && empty($path)) {
-                $actionPath = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', 'routes', 'welcome.php']);
+                $actionPath = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', $this->routeFolderName, 'welcome.php']);
                 $action = require_once($actionPath);
                 return $this->response($action());
             }
@@ -72,10 +81,33 @@ class App extends Core
         });
     }
 
+    private function handleError($type, $message, $code, $file, $line, $trace = [])
+    {
+        if ($this->env('APP_DEBUG', true)) {
+            $this->response([
+                'os'        => PHP_OS,
+                'version'   => 'PHP ' . PHP_VERSION,
+                'type'      => $type,
+                'message'   => $message,
+                'code'      => $code,
+                'file'      => $file,
+                'line'      => $line,
+                'trace'     => $trace
+            ], $code, true);
+        } else {
+            $this->response([
+                'code'      => 500,
+                'message'   => $message
+            ], 500, true);
+        }
+
+        exit;
+    }
+
     private function middleware(\Closure $action)
     {
         $middlewares = [];
-        $middlewarePath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', 'app', 'middlewares']);
+        $middlewarePath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', 'app', $this->middlewareFolderName]);
 
         if (!is_dir($middlewarePath)) return $action();
         $middlewares = array_filter(glob(implode(DIRECTORY_SEPARATOR, [$middlewarePath, '*.php'])), 'file_exists');
@@ -107,7 +139,7 @@ class App extends Core
     {
         $class = new Anonymous;
         $services = [];
-        $servicePath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', 'app', 'services']);
+        $servicePath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', 'app', $this->serviceFolderName]);
 
         if (is_dir($servicePath)) {
             $services = array_filter(glob(implode(DIRECTORY_SEPARATOR, [$servicePath, '*.php'])), 'file_exists');
@@ -121,7 +153,6 @@ class App extends Core
                 return new $serviceClass(...$args);
             });
         }
-
         return $class;
     }
 }

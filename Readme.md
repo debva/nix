@@ -22,8 +22,8 @@ composer require debva/nix
 - **public/**: This folder contains files that can be accessed publicly through the web server. It includes the .htaccess file and index.php.
 
 - **server/**: This folder houses the server-side components of the project.
+    - **middleware/**: This folder contains middleware used in the project.
     - **routes/**: This folder contains the code for the project's route.
-    - **middlewares/**: This folder contains middleware used in the project.
     - **services/**: This folder contains services used in the project.
 
 Feel free to adapt this folder structure template to your project. 
@@ -48,17 +48,14 @@ $app = new Debva\Nix\App;
 $app();
 ```
 
-server/routes/user.php
+Serve from public/index.php
 ```
-<?php
+php -S 0.0.0.0:80
+```
 
-return function() {
-    return $this->response('Hello World');
-};
+See result
 ```
-see result
-```
-http://localhost/v1/user
+http://localhost
 ```
 
 ## Available Method

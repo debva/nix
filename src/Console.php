@@ -2,7 +2,7 @@
 
 namespace Debva\Nix;
 
-class Console extends Environment
+class Console
 {
     private $command;
 
@@ -10,8 +10,6 @@ class Console extends Environment
 
     public function __construct()
     {
-        parent::__construct();
-
         $args = isset($_SERVER['argv']) ? $_SERVER['argv'] : [];
         $this->command = isset($args[1]) ? $args[1] : null;
         $this->argument = isset($args[2]) ? array_slice($args, 2) : [];

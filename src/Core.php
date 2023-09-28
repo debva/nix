@@ -30,7 +30,29 @@ abstract class Core extends Environment
 
         $this->http = new Http;
 
+        $this->crypt = new Cryptography;
+
         $this->auth = new Authentication;
+    }
+
+    public function startsWith($haystack, $needle, $caseInsensitive = false)
+    {
+        if ($caseInsensitive) {
+            $haystack = strtolower($haystack);
+            $needle = strtolower($needle);
+        }
+
+        return substr($haystack, 0, strlen($needle)) === $needle;
+    }
+
+    public function endsWith($haystack, $needle, $caseInsensitive = false)
+    {
+        if ($caseInsensitive) {
+            $haystack = strtolower($haystack);
+            $needle = strtolower($needle);
+        }
+        
+        return substr($haystack, -strlen($needle)) === $needle;
     }
 
     public function env($key, $default = null)

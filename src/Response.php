@@ -4,7 +4,7 @@ namespace Debva\Nix;
 
 class Response
 {
-    public function __invoke($data, $code = 200, $gzip = false, $sanitize = false, $except_sanitize = [])
+    public function __invoke($data, $code = 200, $gzip = true, $sanitize = false, $except_sanitize = [])
     {
         $origin = empty(getenv('ACCESS_CONTROL_ALLOW_ORIGIN')) ? getenv('ACCESS_CONTROL_ALLOW_ORIGIN') : '*';
         $methods = empty(getenv('ACCESS_CONTROL_ALLOW_METHODS')) ?  getenv('ACCESS_CONTROL_ALLOW_METHODS') : 'GET, POST, DELETE, OPTIONS';

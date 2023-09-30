@@ -2,12 +2,23 @@
 
 namespace Debva\Nix;
 
-class Database
+class Database extends Environment
 {
     protected $database;
 
-    public function __construct($connection, $host, $port, $dbname, $user, $password)
+    public function __construct($connection = null)
     {
+        if ($connection) $connection = '_' . strtoupper($connection);
+
+        list($connection, $host, $port, $dbname, $user, $password) = [
+            getenv("DB{$connection}_CONNECTION"),
+            getenv("DB{$connection}_HOST"),
+            getenv("DB{$connection}_PORT"),
+            getenv("DB{$connection}_DATABASE"),
+            getenv("DB{$connection}_USER"),
+            getenv("DB{$connection}_PASSWORD"),
+        ];
+
         try {
             $dsn = "{$connection}:host={$host};port={$port};dbname={$dbname}";
             $options = [
@@ -19,6 +30,11 @@ class Database
         } catch (\PDOException $e) {
             throw new \PDOException($e->getMessage());
         }
+    }
+
+    public function getConnection()
+    {
+        return $this->database;
     }
 
     public function beginTransaction()
@@ -49,9 +65,16 @@ class Database
 
     public function query($query, $bindings = [])
     {
-        $statement = $this->database->prepare($query);
-        $statement->execute($bindings);
-        return $statement;
+        $this->beginTransaction();
+        try {
+            $statement = $this->database->prepare($query);
+            $statement->execute($bindings);
+            $this->commit();
+            return $statement;
+        } catch (\PDOException $e) {
+            $this->rollBack();
+            throw new \PDOException($e->getMessage(), 500);
+        }
     }
 
     public function transaction(\Closure $transaction)

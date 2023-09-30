@@ -43,8 +43,8 @@ class App extends Core
     {
         $path = array_filter(explode('/', $this->requestPath));
 
-        if ($this->startsWith($queue = reset($path), '___queue')) {
-            if ($this->endsWith($queue, $this->env('QUEUE_ID', 'nix'))) {
+        if (_startsWith($queue = reset($path), '___queue')) {
+            if (_endsWith($queue, $this->env('QUEUE_ID', 'nix'))) {
                 $request = $this->request(['user', 'password']);
                 if ($request['user'] === $this->env('QUEUE_USER') && $request['password'] === $this->env('QUEUE_PASSWORD')) {
                     $queue = new Queue;

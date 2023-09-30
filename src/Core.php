@@ -8,6 +8,8 @@ abstract class Core extends Environment
 
     public $auth;
 
+    public $queue;
+
     public $datatable;
 
     protected $path;
@@ -33,26 +35,8 @@ abstract class Core extends Environment
         $this->crypt = new Cryptography;
 
         $this->auth = new Authentication;
-    }
 
-    public function startsWith($haystack, $needle, $caseInsensitive = false)
-    {
-        if ($caseInsensitive) {
-            $haystack = strtolower($haystack);
-            $needle = strtolower($needle);
-        }
-
-        return substr($haystack, 0, strlen($needle)) === $needle;
-    }
-
-    public function endsWith($haystack, $needle, $caseInsensitive = false)
-    {
-        if ($caseInsensitive) {
-            $haystack = strtolower($haystack);
-            $needle = strtolower($needle);
-        }
-        
-        return substr($haystack, -strlen($needle)) === $needle;
+        $this->queue = new Queue;
     }
 
     public function env($key, $default = null)
@@ -101,38 +85,17 @@ abstract class Core extends Environment
 
     public function db($connection = null)
     {
-        if ($connection) $connection = '_' . strtoupper($connection);
-
-        $dsn = [
-            getenv("DB{$connection}_CONNECTION"),
-            getenv("DB{$connection}_HOST"),
-            getenv("DB{$connection}_PORT"),
-            getenv("DB{$connection}_DATABASE"),
-            getenv("DB{$connection}_USER"),
-            getenv("DB{$connection}_PASSWORD"),
-        ];
-
-        return new Database(...$dsn);
+        return new Database($connection);
     }
 
     public function query($query, $bindings = [], $connection = null)
     {
-        $db = $this->db($connection);
-        $db->beginTransaction();
-        try {
-            $result = $db->query($query, $bindings);
-            $db->commit();
-            return $result;
-        } catch (\PDOException $e) {
-            $db->rollBack();
-            throw new \PDOException($e->getMessage(), 500);
-        }
+        return $this->db($connection)->query($query, $bindings);
     }
 
     public function transaction(\Closure $transaction, $connection = null)
     {
-        $db = $this->db($connection);
-        return $db->transaction($transaction);
+        return $this->db($connection)->transaction($transaction);
     }
 
     public function datatable($data)

@@ -41,19 +41,27 @@ class App extends Core
 
     public function __invoke()
     {
+        if (in_array($this->sapiName, ['cli'])) {
+            $console = new Console;
+            return $console();
+        }
+        
         $path = array_filter(explode('/', $this->requestPath));
 
         if (_startsWith($queue = reset($path), '___queue')) {
             if (_endsWith($queue, $this->env('QUEUE_ID', 'nix'))) {
-                $request = $this->request(['user', 'password']);
-                if ($request['user'] === $this->env('QUEUE_USER') && $request['password'] === $this->env('QUEUE_PASSWORD')) {
+                $request = $this->request(['username', 'password']);
+                if (
+                    $request['username'] == $this->env('QUEUE_USER', '') &&
+                    $request['password'] == $this->env('QUEUE_PASSWORD', '')
+                ) {
                     $queue = new Queue;
-                    return $queue();
+                    return $this->response($queue());
                 }
             }
         }
 
-        $basePath = implode(DIRECTORY_SEPARATOR, array_merge([getcwd(), '..', 'app', $this->routeFolderName], $path));
+        $basePath = implode(DIRECTORY_SEPARATOR, array_merge([$this->rootPath, 'app', $this->routeFolderName], $path));
         $actionPath = implode('.', [$basePath, 'php']);
 
         if (!file_exists($actionPath)) {
@@ -77,7 +85,17 @@ class App extends Core
         }
 
         return $this->middleware(function () use ($action) {
-            return $action(...array_values($this->request()));
+            $reflection = new \ReflectionFunction($action);
+            $parameter = array_values($this->request());
+            $parameters = $reflection->getParameters();
+
+            $arguments = [];
+            foreach ($parameters as $index => $param) {
+                $arguments[$index] = isset($parameter[$index]) ? $arguments[$index] = $parameter[$index] : null;
+                if (empty($arguments[$index]) && $param->isDefaultValueAvailable()) $arguments[$index] = $param->getDefaultValue();
+            }
+
+            return $action(...$arguments);
         });
     }
 
@@ -107,7 +125,7 @@ class App extends Core
     private function middleware(\Closure $action)
     {
         $middlewares = [];
-        $middlewarePath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', 'app', $this->middlewareFolderName]);
+        $middlewarePath = implode(DIRECTORY_SEPARATOR, [$this->rootPath, 'app', $this->middlewareFolderName]);
 
         if (!is_dir($middlewarePath)) return $action();
         $middlewares = array_filter(glob(implode(DIRECTORY_SEPARATOR, [$middlewarePath, '*.php'])), 'file_exists');
@@ -139,7 +157,7 @@ class App extends Core
     {
         $class = new Anonymous;
         $services = [];
-        $servicePath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', 'app', $this->serviceFolderName]);
+        $servicePath = implode(DIRECTORY_SEPARATOR, [$this->rootPath, 'app', $this->serviceFolderName]);
 
         if (is_dir($servicePath)) {
             $services = array_filter(glob(implode(DIRECTORY_SEPARATOR, [$servicePath, '*.php'])), 'file_exists');

@@ -18,25 +18,31 @@ abstract class Core extends Environment
 
     protected $loadtime;
 
+    protected $sapiName;
+
     public function __construct()
     {
         $this->loadtime = microtime(true);
+        
+        $this->sapiName = php_sapi_name();
 
         parent::__construct();
 
-        date_default_timezone_set($this->env('DATE_TIMEZONE', 'Asia/Jakarta'));
-
-        $requestPath = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
-        $this->path = $this->env('APP_PATH', '') ? trim($this->env('APP_PATH', ''), '/') : '';
-        $this->requestPath = trim(str_replace($this->path, '', $requestPath), '/');
-
-        $this->http = new Http;
-
-        $this->crypt = new Cryptography;
-
-        $this->auth = new Authentication;
-
-        $this->queue = new Queue;
+        if (!in_array($this->sapiName, ['cli'])) {
+            date_default_timezone_set($this->env('DATE_TIMEZONE', 'Asia/Jakarta'));
+    
+            $requestPath = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+            $this->path = $this->env('APP_PATH', '') ? trim($this->env('APP_PATH', ''), '/') : '';
+            $this->requestPath = trim(str_replace($this->path, '', $requestPath), '/');
+    
+            $this->http = new Http;
+    
+            $this->crypt = new Cryptography;
+    
+            $this->auth = new Authentication;
+    
+            $this->queue = new Queue;
+        }
     }
 
     public function env($key, $default = null)
@@ -44,7 +50,7 @@ abstract class Core extends Environment
         $value = getenv($key);
 
         if (!$value || (!$value && $default !== null)) $value = $default;
-        if (is_string($value) && strtolower($value) !== 'null') {
+        if (is_string($value) && strtolower($value) !== 'null' && trim($value) !== '') {
             $decodedValue = json_decode($value, true);
             if (json_last_error() === JSON_ERROR_NONE) $value = $decodedValue;
         }
@@ -106,12 +112,6 @@ abstract class Core extends Environment
     public function telegram($token = null)
     {
         return new Telegram($token ? $token : $this->env('TELEGRAM_TOKEN', ''));
-    }
-
-    public function dd(...$vars)
-    {
-        var_dump(...$vars);
-        exit;
     }
 
     public function loadtime()

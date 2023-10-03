@@ -2,14 +2,18 @@
 
 namespace Debva\Nix;
 
-class Console
+class Console extends Environment
 {
-    private $command;
+    protected $command;
 
-    private $argument = [];
+    protected $argument = [];
+
+    protected $consoleFolderName = 'command';
 
     public function __construct()
     {
+        parent::__construct();
+
         $args = isset($_SERVER['argv']) ? $_SERVER['argv'] : [];
         $this->command = isset($args[1]) ? $args[1] : null;
         $this->argument = isset($args[2]) ? array_slice($args, 2) : [];
@@ -17,6 +21,10 @@ class Console
 
     public function __invoke()
     {
+        if (is_null($this->command)) {
+        }
+
+        dd($this->command);
     }
 
     protected function write($text, $color = null, $background = null)
@@ -107,7 +115,7 @@ class Console
 
     protected function generateFile($title, $stub, $folder, $filepath, $search = [], $replace = [])
     {
-        $stubpath = join(DIRECTORY_SEPARATOR, [getcwd(), '..', 'stubs', $stub . '.stub']);
+        $stubpath = join(DIRECTORY_SEPARATOR, [$this->rootPath, 'stubs', $stub . '.stub']);
         if (!file_exists($stubpath)) $stubpath = join(DIRECTORY_SEPARATOR, [__DIR__, '..', 'stubs', $stub . '.stub']);
 
         if (file_exists($stubpath)) {
@@ -117,7 +125,7 @@ class Console
             $filepath = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $filepath), '\/');
             $filename = implode(DIRECTORY_SEPARATOR, [dirname($filepath), pathinfo($filepath, PATHINFO_FILENAME)]);
 
-            if (file_exists($filepath = join(DIRECTORY_SEPARATOR, [getcwd(), '..', 'server', $folder, $filepath]))) {
+            if (file_exists($filepath = join(DIRECTORY_SEPARATOR, [$this->rootPath, 'server', $folder, $filepath]))) {
                 $this->error("{$title} {$filename} exists");
                 exit;
             }
@@ -132,9 +140,5 @@ class Console
         }
 
         $this->error("Stub {$stub} not found!");
-    }
-
-    private function commands()
-    {
     }
 }

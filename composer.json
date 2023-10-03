@@ -5,7 +5,8 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Debva\\Nix\\": "src/"
+            "Debva\\Nix\\": "src/",
+            "Debva\\Nix\\Console": "console/"
         },
         "files": ["src/Helper.php"]
     },

@@ -16,7 +16,7 @@ class Response
         header("Access-Control-Allow-Headers: {$headers}");
         header('Content-Type: application/json; charset=utf-8');
 
-        if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") {
+        if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == "OPTIONS") {
             header("HTTP/1.1 200 OK");
             die();
         }

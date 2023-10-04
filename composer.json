@@ -6,7 +6,7 @@
     "autoload": {
         "psr-4": {
             "Debva\\Nix\\": "src/",
-            "Debva\\Nix\\Console": "console/"
+            "Debva\\Nix\\Command\\": "command/"
         },
         "files": ["src/Helper.php"]
     },
@@ -17,6 +17,7 @@
         }
     ],
     "minimum-stability": "stable",
+    "prefer-stable": true,
     "require": {
         "nullpunkt/lz-string-php": "^1.0"
     }

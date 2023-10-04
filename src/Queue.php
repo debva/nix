@@ -12,18 +12,24 @@ class Queue
 
     public function __construct()
     {
-        $constants = [
-            'QUEUE_ALL' => true,
-            'QUEUE_PENDING' => 'PENDING',
-            'QUEUE_RUNNING' => 'RUNNING',
-            'QUEUE_SUCCESS' => 'SUCCESS',
-            'QUEUE_FAILURE' => 'FAILURE',
-        ];
+        if (!defined('QUEUE_ALL')) {
+            define('QUEUE_ALL', true);
+        }
 
-        foreach ($constants as $constant => $value) {
-            if (!defined($constant)) {
-                define($constant, $value);
-            }
+        if (!defined('QUEUE_PENDING')) {
+            define('QUEUE_PENDING', 'PENDING');
+        }
+
+        if (!defined('QUEUE_RUNNING')) {
+            define('QUEUE_RUNNING', 'RUNNING');
+        }
+
+        if (!defined('QUEUE_SUCCESS')) {
+            define('QUEUE_SUCCESS', 'SUCCESS');
+        }
+
+        if (!defined('QUEUE_FAILURE')) {
+            define('QUEUE_FAILURE', 'FAILURE');
         }
 
         $this->db = new Database;

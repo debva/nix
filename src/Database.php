@@ -20,6 +20,10 @@ class Database extends Environment
         ];
 
         try {
+            if (!isset($connection, $host, $dbname, $user, $password)) {
+                throw new \Exception('Invalid database connection!');
+            }
+
             $dsn = "{$connection}:host={$host};port={$port};dbname={$dbname}";
             $options = [
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,

@@ -32,7 +32,7 @@ class Queue
             define('QUEUE_FAILURE', 'FAILURE');
         }
 
-        $this->db = new Database;
+        // $this->db = new Database;
     }
 
     public function __invoke()

@@ -14,7 +14,7 @@ class Environment
             $this->rootPath = realpath(implode(DIRECTORY_SEPARATOR, [dirname($this->rootPath), '..']));
         }
 
-        if (empty($_ENV)) {
+        if (empty($_ENV) || !isset($_ENV['NIX_ENV_ISSET'])) {
             $envpath = implode(DIRECTORY_SEPARATOR, [$this->rootPath, '.env']);
 
             if (!file_exists($envpath)) {
@@ -22,6 +22,7 @@ class Environment
                 copy($defaultenvpath, $envpath);
             }
 
+            $_ENV['NIX_ENV_ISSET'] = 1;
             $env = file_get_contents($envpath);
             $lines = preg_split('/\r\n|\r|\n/', $env);
 

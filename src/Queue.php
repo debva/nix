@@ -6,9 +6,9 @@ class Queue
 {
     protected $queueFolderName = 'queue';
 
-    protected $db;
-
     protected $queueFiles = [];
+
+    protected $db;
 
     public function __construct()
     {
@@ -31,8 +31,6 @@ class Queue
         if (!defined('QUEUE_FAILURE')) {
             define('QUEUE_FAILURE', 'FAILURE');
         }
-
-        // $this->db = new Database;
     }
 
     public function __invoke()
@@ -99,6 +97,8 @@ class Queue
 
     private function getPendingQueue()
     {
+        $this->db = new Database;
+
         try {
             $queue = $this->getQueue(QUEUE_PENDING);
             return $this->db->query($queue->query(), $queue->bindings())->fetchAll();
@@ -111,6 +111,8 @@ class Queue
 
     private function import($message = null, \Closure $callback)
     {
+        $this->db = new Database;
+
         try {
             $table = $this->db->query("SHOW TABLES LIKE ?", ['schedulers'])->fetchColumn();
 
@@ -134,6 +136,8 @@ class Queue
 
     public function addQueue(\Closure $callback)
     {
+        $this->db = new Database;
+
         $class = new Anonymous;
         $macros = [
             'title'         => null,
@@ -193,6 +197,8 @@ class Queue
 
     public function getQueue($status = QUEUE_ALL)
     {
+        $this->db = new Database;
+
         if (!in_array($status, range(0, 5))) {
             throw new \Exception("Status not found!", 500);
         }
@@ -286,6 +292,8 @@ class Queue
 
     public function removeQueue($queueId)
     {
+        $this->db = new Database;
+        
         try {
             $this->db->query('DELETE FROM queue WHERE id = ?', [$queueId]);
             return true;

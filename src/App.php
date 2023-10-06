@@ -14,8 +14,6 @@ class App extends Core
 
     public function __construct()
     {
-        parent::__construct();
-
         ini_set('display_errors', 'Off');
 
         set_exception_handler(function ($e) {
@@ -32,6 +30,8 @@ class App extends Core
                 $this->handleError('Fatal Error', $error['message'], 500, $error['file'], $error['line']);
             }
         });
+
+        parent::__construct();
 
         define('FRAMEWORK_VERSION', '1.5.0');
         define('APP_VERSION', $this->env('APP_VERSION', '1.0.0'));

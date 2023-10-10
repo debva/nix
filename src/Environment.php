@@ -2,7 +2,7 @@
 
 namespace Debva\Nix;
 
-class Environment
+abstract class Environment
 {
     public $rootPath;
 

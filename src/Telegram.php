@@ -14,9 +14,10 @@ class Telegram
 
     protected $parameter;
 
-    public function __construct($token)
+    public function __construct($token = null)
     {
-        $this->url = "{$this->url}{$token}";
+        $this->token = $token;
+        $this->url = "{$this->url}{$this->token}";
     }
 
     public function __call($endpoint, $parameter)
@@ -47,6 +48,32 @@ class Telegram
         }
     }
 
+    public function authorize($authData, $exp = 86400)
+    {
+        $dataCheckArr = [];
+        $checkHash = $authData['hash'];
+        
+        unset($authData['hash']);
+        foreach ($authData as $key => $value) {
+            $dataCheckArr[] = $key . '=' . $value;
+        }
+        
+        sort($dataCheckArr);
+        $dataCheckStr = implode("\n", $dataCheckArr);
+        $secretKey = hash('sha256', $this->token, true);
+        $hash = hash_hmac('sha256', $dataCheckStr, $secretKey);
+
+        if (strcmp($hash, $checkHash) !== 0) {
+            throw new \Exception('Authentication telegram not valid', 400);
+        }
+
+        if ((time() - $authData['auth_date']) > $exp) {
+            throw new \Exception('Authentication data is no longer valid', 401);
+        }
+
+        return $authData;
+    }
+
     protected function send()
     {
         try {
@@ -57,7 +84,7 @@ class Telegram
                     'header'  => "Content-type: application/x-www-form-urlencoded"
                 ]
             ]));
-            
+
             return json_decode($response);
         } catch (\Exception $e) {
             throw new \Exception($e->getMessage(), 500);

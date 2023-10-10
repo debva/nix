@@ -77,7 +77,16 @@ class Authentication extends Authorization
 
         foreach ($macros as $key => $macro) {
             $class->macro($macro, function ($self, $value) use (&$payloads, $key) {
-                $payloads[$key] = $value;
+                if (in_array($key, ['exp', 'nbf'])) {
+                    if (!is_int($value)) {
+                        throw new \Exception('Value must be an integer!');
+                    }
+
+                    $payloads[$key] = time() + $value;
+                } else {
+                    $payloads[$key] = $value;
+                }
+
                 return $self;
             });
         }

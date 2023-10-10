@@ -4,14 +4,6 @@ namespace Debva\Nix;
 
 abstract class Core extends Environment
 {
-    public $http;
-
-    public $auth;
-
-    public $queue;
-
-    public $datatable;
-
     protected $path;
 
     protected $requestPath;
@@ -23,25 +15,37 @@ abstract class Core extends Environment
     public function __construct()
     {
         $this->loadtime = microtime(true);
-        
+
         $this->sapiName = php_sapi_name();
 
         parent::__construct();
 
         if (!in_array($this->sapiName, ['cli'])) {
             date_default_timezone_set($this->env('DATE_TIMEZONE', 'Asia/Jakarta'));
-    
+
             $requestPath = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
             $this->path = $this->env('APP_PATH', '') ? trim($this->env('APP_PATH', ''), '/') : '';
             $this->requestPath = trim(str_replace($this->path, '', $requestPath), '/');
-    
-            $this->http = new Http;
-    
-            $this->crypt = new Cryptography;
-    
-            $this->auth = new Authentication;
-    
-            $this->queue = new Queue;
+        }
+    }
+
+    public function __get($name)
+    {
+        $classess = [
+            'http'      => Http::class,
+            'crypt'     => Cryptography::class,
+            'auth'      => Authentication::class,
+            'queue'     => Queue::class,
+            'userAgent' => UserAgent::class,
+            'session'   => Session::class,
+        ];
+
+        if (in_array($name, array_keys($classess))) {
+            if (isset($this->{$name})){
+                return $this->{$name};
+            }
+            
+            return new $classess[$name];
         }
     }
 

@@ -96,16 +96,18 @@ class Cryptography
         return 'The key pair was successfully created';
     }
 
-    public function encrypt($data, $cipher_algo, $passphrase)
+    public function encrypt($data, $cipher_algo, $passphrase = null)
     {
-        $iv = substr(base64_encode($passphrase), 0, 15);
+        $key = getenv('APP_KEY') ? getenv('APP_KEY') : '12345ABCDE';
+        $iv = substr(base64_encode($passphrase ? $passphrase : $key), 0, 15);
         $iv = strlen($iv) < 16 ? str_pad($iv, 16, $iv) : $iv;
         return openssl_encrypt($data, $cipher_algo, $passphrase, 0, ($iv));
     }
 
-    public function decrypt($data, $cipher_algo, $passphrase)
+    public function decrypt($data, $cipher_algo, $passphrase = null)
     {
-        $iv = substr(base64_encode($passphrase), 0, 15);
+        $key = getenv('APP_KEY') ? getenv('APP_KEY') : '12345ABCDE';
+        $iv = substr(base64_encode($passphrase ? $passphrase : $key), 0, 15);
         $iv = strlen($iv) < 16 ? str_pad($iv, 16, $iv) : $iv;
         return openssl_decrypt($data, $cipher_algo, $passphrase, 0, ($iv));
     }

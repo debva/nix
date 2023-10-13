@@ -2,7 +2,7 @@
 
 namespace Debva\Nix;
 
-class Database extends Environment
+class Database
 {
     protected $database;
 
@@ -11,12 +11,12 @@ class Database extends Environment
         if ($connection) $connection = '_' . strtoupper($connection);
 
         list($connection, $host, $port, $dbname, $user, $password) = [
-            getenv("DB{$connection}_CONNECTION"),
-            getenv("DB{$connection}_HOST"),
-            getenv("DB{$connection}_PORT"),
-            getenv("DB{$connection}_DATABASE"),
-            getenv("DB{$connection}_USER"),
-            getenv("DB{$connection}_PASSWORD"),
+            env("DB{$connection}_CONNECTION"),
+            env("DB{$connection}_HOST"),
+            env("DB{$connection}_PORT"),
+            env("DB{$connection}_DATABASE"),
+            env("DB{$connection}_USER"),
+            env("DB{$connection}_PASSWORD"),
         ];
 
         try {
@@ -26,8 +26,8 @@ class Database extends Environment
 
             $dsn = "{$connection}:host={$host};port={$port};dbname={$dbname}";
             $options = [
-                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
-                \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+                \PDO::ATTR_ERRMODE              => \PDO::ERRMODE_EXCEPTION,
+                \PDO::ATTR_DEFAULT_FETCH_MODE   => \PDO::FETCH_ASSOC
             ];
 
             $this->database = new \PDO($dsn, $user, $password, $options);

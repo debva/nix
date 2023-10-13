@@ -4,27 +4,25 @@ namespace Debva\Nix;
 
 abstract class Environment
 {
-    public $rootPath;
-
     public function __construct()
     {
-        if (!$this->rootPath) {
-            $scriptPath = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $_SERVER['SCRIPT_FILENAME']);
-            $this->rootPath = _startsWith($scriptPath, getcwd()) ? $scriptPath : implode(DIRECTORY_SEPARATOR, [getcwd(), $scriptPath]);
-            $this->rootPath = realpath(implode(DIRECTORY_SEPARATOR, [dirname($this->rootPath), '..']));
-        }
+        if (!isset($_ENV['NIX_VERSION'])) {
+            $envPath = (new Storage)->basePath('.env');
 
-        if (empty($_ENV) || !isset($_ENV['NIX_ENV_ISSET'])) {
-            $envpath = implode(DIRECTORY_SEPARATOR, [$this->rootPath, '.env']);
+            if (!file_exists($envPath)) {
+                $defaultEnvPath = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', 'stubs', '.env.stub']);
 
-            if (!file_exists($envpath)) {
-                $defaultenvpath = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', '.env.example']);
-                copy($defaultenvpath, $envpath);
+                if (!copy($defaultEnvPath, $envPath)) {
+                    throw new \Exception('Environment file cannot be created!');
+                }
             }
 
-            $_ENV['NIX_ENV_ISSET'] = 1;
-            $env = file_get_contents($envpath);
-            $lines = preg_split('/\r\n|\r|\n/', $env);
+            if (!defined('FRAMEWORK_VERSION')) {
+                define('FRAMEWORK_VERSION', '1.5.0');
+            }
+
+            $_ENV['NIX_VERSION'] = FRAMEWORK_VERSION;
+            $lines = preg_split('/\r\n|\r|\n/', file_get_contents($envPath));
 
             foreach ($lines as $line) {
                 $line = trim($line);

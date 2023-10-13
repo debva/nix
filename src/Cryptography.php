@@ -99,16 +99,22 @@ class Cryptography
     public function encrypt($data, $cipher_algo, $passphrase = null)
     {
         $key = getenv('APP_KEY') ? getenv('APP_KEY') : '12345ABCDE';
+        $passphrase = $passphrase ? $passphrase : $key;
+
         $iv = substr(base64_encode($passphrase ? $passphrase : $key), 0, 15);
         $iv = strlen($iv) < 16 ? str_pad($iv, 16, $iv) : $iv;
+        
         return openssl_encrypt($data, $cipher_algo, $passphrase, 0, ($iv));
     }
 
     public function decrypt($data, $cipher_algo, $passphrase = null)
     {
         $key = getenv('APP_KEY') ? getenv('APP_KEY') : '12345ABCDE';
+        $passphrase = $passphrase ? $passphrase : $key;
+
         $iv = substr(base64_encode($passphrase ? $passphrase : $key), 0, 15);
         $iv = strlen($iv) < 16 ? str_pad($iv, 16, $iv) : $iv;
+        
         return openssl_decrypt($data, $cipher_algo, $passphrase, 0, ($iv));
     }
 }

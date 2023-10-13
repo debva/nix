@@ -1,4 +1,4 @@
-CREATE TABLE `schedulers` (
+CREATE TABLE `jobs` (
   `id` int(0) UNSIGNED NOT NULL AUTO_INCREMENT,
   `title` varchar(150) NOT NULL,
   `class` varchar(150) NOT NULL,

@@ -16,7 +16,7 @@ class Telegram
 
     public function __construct($token = null)
     {
-        $this->token = $token;
+        $this->token = $token ? $token : env('TELEGRAM_TOKEN');
         $this->url = "{$this->url}{$this->token}";
     }
 
@@ -52,12 +52,12 @@ class Telegram
     {
         $dataCheckArr = [];
         $checkHash = $authData['hash'];
-        
+
         unset($authData['hash']);
         foreach ($authData as $key => $value) {
             $dataCheckArr[] = $key . '=' . $value;
         }
-        
+
         sort($dataCheckArr);
         $dataCheckStr = implode("\n", $dataCheckArr);
         $secretKey = hash('sha256', $this->token, true);

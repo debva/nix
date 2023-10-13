@@ -2,7 +2,7 @@
 
 namespace Debva\Nix;
 
-class Validator
+class Validate
 {
     protected $request;
 
@@ -12,17 +12,14 @@ class Validator
 
     protected $customRules;
 
-    public function __construct($rules, $options = [])
+    public function __invoke($rules, $options = [])
     {
         extract($options, EXTR_PREFIX_ALL, 'opts');
 
         $this->rules = $rules;
         $this->messages = isset($opts_messages) ? $opts_messages : [];
         $this->customRules = isset($opts_rules) ? $opts_rules : [];
-    }
 
-    public function __invoke()
-    {
         $attributeWithRule = $errors = [];
 
         $availableRules = array_filter(get_class_methods($this), function ($item) {
@@ -66,7 +63,7 @@ class Validator
             }
         }
 
-        $request = new Request;
+        $request = nix('request');
 
         foreach ($attributeWithRule as $attribute => $rules) {
             foreach ($rules as $rule) {
@@ -95,7 +92,7 @@ class Validator
         }
 
         if (!empty($errors)) {
-            $response = new Response;
+            $response = nix('response');
             $response(['validation' => $errors], 400);
             exit;
         }

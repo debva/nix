@@ -96,19 +96,19 @@ def configuration(e):
 
         root.mainloop()
 
-def schedule(e):
+def task(e):
     if keyboard.is_pressed('ctrl+i'):
         root = Tk()
         root.focus_force()
-        root.title("Schedule")
+        root.title("Tasks")
 
         display = Text(root, height=50, width=123)
         display.pack()
 
-        schedule = readFile('schedule')
+        tasks = readFile('task')
 
         display.delete(1.0, END)  
-        display.insert(END, json.dumps(schedule if len(schedule) > 0 else 'No Schedule', indent=4))
+        display.insert(END, json.dumps(tasks if len(tasks) > 0 else 'No Task', indent=4))
 
         root.mainloop()
 
@@ -155,7 +155,7 @@ def runTimeTasks(url, tasks, index = 0):
                         isAuthenticated = False
                         raise Exception(response.json().get('message', 'Response Error'))
 
-                    writeFile('schedule', response.json())
+                    writeFile('task', response.json())
                     createStatus(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}]")
                     appendFile('history', f"{nowStr}[OK]\n")
                     
@@ -177,13 +177,13 @@ isStartup = isAuthenticated = True
 if not os.path.exists(datadir):
     os.makedirs(datadir)
 
-set_terminal_title('Task Schedulers')
+set_terminal_title('Task Scheduler')
 
 keyboard.on_press_key('ctrl', configuration)
 keyboard.on_press_key('/', configuration)
 
-keyboard.on_press_key('ctrl', schedule)
-keyboard.on_press_key('i', schedule)
+keyboard.on_press_key('ctrl', task)
+keyboard.on_press_key('i', task)
 
 keyboard.on_press_key('ctrl', history)
 keyboard.on_press_key('l', history)
@@ -200,7 +200,7 @@ try:
         now = datetime.now()
         nowStr = f"{now.strftime('%Y-%m-%d %H:%M:%S')}"
         config = readFile('config')
-        schedules = readFile('schedule')
+        tasks = readFile('tasks')
         
         if (len(config) > 0 and isAuthenticated):
             username = config['username'].strip()
@@ -216,7 +216,7 @@ try:
                         isAuthenticated = False
                         raise Exception(response.json().get('message', 'Response Error'))
                     
-                    writeFile('schedule', response.json())
+                    writeFile('task', response.json())
                     createStatus(f"[{nowStr}]")
                     
                     isStartup = False
@@ -228,8 +228,8 @@ try:
                     createStatus(f"[{nowStr}]", True)
                     continue
 
-            if (len(schedules) > 0):
-                runTask = list(map(lambda s: s['run_at'], schedules))
+            if (len(tasks) > 0):
+                runTask = list(map(lambda s: s['run_at'], tasks))
                 if None in runTask:
                     try:
                         recordRuntime = now + timedelta(minutes=int(config['interval']))
@@ -239,7 +239,7 @@ try:
                             isAuthenticated = False
                             raise Exception(response.json().get('message', 'Response Error'))
                         
-                        writeFile('schedule', response.json())
+                        writeFile('task', response.json())
                         createStatus(f"[{nowStr}]")
                         appendFile('history', f"[{nowStr}][OK]\n")
                     
@@ -262,7 +262,7 @@ try:
                         isAuthenticated = False
                         raise Exception(response.json().get('message', 'Response Error'))
                     
-                    writeFile('schedule', response.json())
+                    writeFile('task', response.json())
                     createStatus(f"[{nowStr}]")
                     appendFile('history', f"[{nowStr}][OK]\n")
                 

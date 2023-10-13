@@ -1,6 +1,6 @@
 <?php
 
-namespace Debva\Nix\Command;
+namespace Debva\Console;
 
 class Route
 {

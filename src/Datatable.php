@@ -22,9 +22,7 @@ class Datatable
     {
         $this->loadtime = microtime(true);
 
-        $request = new Request;
-        $request = $request();
-
+        $request = request();
         $request = isset($request['datatable'], $request['datatable']['page'], $request['datatable']['limit'])
             ? $request['datatable']
             : ['page' => 1, 'limit' => 10];
@@ -162,7 +160,6 @@ class Datatable
             'data'          => $this->data
         ], (!empty($this->columns) ? ['columns' => $this->columns] : []));
 
-        $response = new Response;
-        return $response($data, $code, $gzip, $sanitize, $except_sanitize);
+        return response($data, $code, $gzip, $sanitize, $except_sanitize);
     }
 }

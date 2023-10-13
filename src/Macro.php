@@ -6,9 +6,14 @@ abstract class Macro
 {
     public $macros = [];
 
-    public function macro($name, $callback)
+    public function __set($name, $value)
     {
-        $this->macros[$name] = $callback;
+        return $this->{$name} = $value;
+    }
+
+    public function __get($name)
+    {
+        return $this->{$name};
     }
 
     public function __call($method, $args)
@@ -21,5 +26,10 @@ abstract class Macro
         }
 
         throw new \Exception("Method [$method] does not exist.");
+    }
+
+    public function macro($name, $callback)
+    {
+        $this->macros[$name] = $callback;
     }
 }

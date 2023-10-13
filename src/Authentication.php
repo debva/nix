@@ -4,9 +4,9 @@ namespace Debva\Nix;
 
 class Authentication extends Authorization
 {
-    protected $algorithms = [];
-
     protected $crpyt;
+
+    protected $algorithms = [];
 
     public function __construct()
     {
@@ -22,7 +22,19 @@ class Authentication extends Authorization
             'RS512'     => OPENSSL_ALGO_SHA512,
         ];
 
-        $this->crypt = new Cryptography;
+        $this->crypt = nix('crypt');
+    }
+
+    public function __get($name)
+    {
+        switch ($name) {
+            case 'token':
+                $headers = getallheaders();
+                return isset($headers['Authorization']) ? $headers['Authorization'] : null;
+
+            case 'user':
+                return;
+        }
     }
 
     protected function generateSignature($algorithm, $data, $signingKey, $privateKey = null)
@@ -61,7 +73,7 @@ class Authentication extends Authorization
 
     public function buildToken(\Closure $builder)
     {
-        $class = new Anonymous;
+        $class = nix('anonymous');
         $macros = [
             'iss' => 'issuedBy',
             'sub' => 'subject',
@@ -77,16 +89,11 @@ class Authentication extends Authorization
 
         foreach ($macros as $key => $macro) {
             $class->macro($macro, function ($self, $value) use (&$payloads, $key) {
-                if (in_array($key, ['exp', 'nbf'])) {
-                    if (!is_int($value)) {
-                        throw new \Exception('Value must be an integer!');
-                    }
-
-                    $payloads[$key] = time() + $value;
-                } else {
-                    $payloads[$key] = $value;
+                if (in_array($key, ['exp', 'nbf']) && !is_int($value)) {
+                    throw new \Exception('Value must be an integer!');
                 }
 
+                $payloads[$key] = $value;
                 return $self;
             });
         }
@@ -97,6 +104,11 @@ class Authentication extends Authorization
         });
 
         $class->macro('withClaim', function ($self, $key, $value) use (&$payloads) {
+            $payloads[$key] = $value;
+            return $self;
+        });
+
+        $class->macro('save', function ($self, $key, $value) use (&$payloads) {
             $payloads[$key] = $value;
             return $self;
         });

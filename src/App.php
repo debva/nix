@@ -2,15 +2,17 @@
 
 namespace Debva\Nix;
 
-class App extends Core
+class App extends Bridge
 {
-    public $service;
+    protected $appPath = 'app';
 
-    protected $middlewareFolderName = 'middleware';
+    protected $middlewarePath = 'middleware';
 
-    protected $routeFolderName = 'routes';
+    protected $routePath = 'routes';
 
-    protected $serviceFolderName = 'services';
+    protected $servicePath = 'services';
+
+    protected $requestPath;
 
     public function __construct()
     {
@@ -33,44 +35,38 @@ class App extends Core
 
         parent::__construct();
 
-        define('FRAMEWORK_VERSION', '1.5.0');
-        define('APP_VERSION', $this->env('APP_VERSION', '1.0.0'));
-
-        $this->service = $this->service();
+        if (!$this->requestPath) {
+            $this->requestPath = nix('route')->requestPath;
+        }
     }
 
     public function __invoke()
     {
-        if (in_array($this->sapiName, ['cli'])) {
-            $console = new Console;
-            return $console();
-        }
-        
-        $path = array_filter(explode('/', $this->requestPath));
+        $requestPath = array_filter(explode('/', $this->requestPath));
 
-        if (_startsWith($queue = reset($path), '___queue')) {
-            if (_endsWith($queue, $this->env('QUEUE_ID', 'nix'))) {
-                $request = $this->request(['username', 'password']);
+        if (startsWith($queue = reset($requestPath), '___queue')) {
+            if (endsWith($queue, env('QUEUE_ID', 'nix'))) {
+                $request = request(['username', 'password']);
                 if (
-                    $request['username'] == $this->env('QUEUE_USER', '') &&
-                    $request['password'] == $this->env('QUEUE_PASSWORD', '')
+                    $request['username'] == env('QUEUE_USER', '') &&
+                    $request['password'] == env('QUEUE_PASSWORD', '')
                 ) {
-                    $queue = new Queue;
-                    return $this->response($queue());
+                    $queue = nix('queue');
+                    return response($queue());
                 }
             }
         }
 
-        $basePath = implode(DIRECTORY_SEPARATOR, array_merge([$this->rootPath, 'app', $this->routeFolderName], $path));
+        $basePath = implode(DIRECTORY_SEPARATOR, [basePath(), $this->appPath, $this->routePath, $this->requestPath]);
         $actionPath = implode('.', [$basePath, 'php']);
 
         if (!file_exists($actionPath)) {
             $actionPath = implode(DIRECTORY_SEPARATOR, [$basePath, 'index.php']);
 
-            if (!file_exists($actionPath) && empty($path)) {
-                $actionPath = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', $this->routeFolderName, 'welcome.php']);
+            if (!file_exists($actionPath) && empty($requestPath)) {
+                $actionPath = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', $this->routePath, 'welcome.php']);
                 $action = require_once($actionPath);
-                return $this->response($action());
+                return response($action());
             }
 
             if (!file_exists($actionPath)) {
@@ -81,12 +77,12 @@ class App extends Core
         $action = require_once($actionPath);
 
         if (!is_callable($action)) {
-            throw new \Exception('Route is not callable!', 500);
+            throw new \Exception('Route is not valid!', 500);
         }
 
         return $this->middleware(function () use ($action) {
             $reflection = new \ReflectionFunction($action);
-            $parameter = array_values($this->request());
+            $parameter = array_values(request());
             $parameters = $reflection->getParameters();
 
             $arguments = [];
@@ -99,10 +95,17 @@ class App extends Core
         });
     }
 
+    public function __get($name)
+    {
+        if ($name === 'service') {
+            return $this->service();
+        }
+    }
+
     private function handleError($type, $message, $code, $file, $line, $trace = [])
     {
-        if ($this->env('APP_DEBUG', true)) {
-            $this->response([
+        if (env('APP_DEBUG', true)) {
+            response([
                 'os'        => PHP_OS,
                 'version'   => 'PHP ' . PHP_VERSION,
                 'type'      => $type,
@@ -113,7 +116,7 @@ class App extends Core
                 'trace'     => $trace
             ], $code, true);
         } else {
-            $this->response([
+            response([
                 'code'      => 500,
                 'message'   => $message
             ], 500, true);
@@ -125,7 +128,7 @@ class App extends Core
     private function middleware(\Closure $action)
     {
         $middlewares = [];
-        $middlewarePath = implode(DIRECTORY_SEPARATOR, [$this->rootPath, 'app', $this->middlewareFolderName]);
+        $middlewarePath = implode(DIRECTORY_SEPARATOR, [basePath(), $this->appPath, $this->middlewarePath]);
 
         if (!is_dir($middlewarePath)) return $action();
         $middlewares = array_filter(glob(implode(DIRECTORY_SEPARATOR, [$middlewarePath, '*.php'])), 'file_exists');
@@ -133,20 +136,18 @@ class App extends Core
         $next = function ($middlewares) use (&$next, &$middleware, $action) {
             if (!empty($middlewares)) {
                 $file = array_shift($middlewares);
-                if (file_exists($file)) {
-                    $middleware = require_once($file);
-                    $middleware = $middleware($next);
+                $middleware = require_once($file);
+                $middleware = $middleware($next);
 
-                    if ($middleware instanceof \Closure && !empty($middlewares)) {
-                        return $next($middlewares);
-                    }
+                if ($middleware instanceof \Closure && !empty($middlewares)) {
+                    return $next($middlewares);
                 }
             }
 
             if (!$middleware instanceof \Closure) $action = $middleware;
             else $action = $action();
 
-            if (is_array($action)) return $this->response($action);
+            if (is_array($action)) return response($action);
             return print($action);
         };
 
@@ -155,13 +156,14 @@ class App extends Core
 
     private function service()
     {
-        $class = new Anonymous;
         $services = [];
-        $servicePath = implode(DIRECTORY_SEPARATOR, [$this->rootPath, 'app', $this->serviceFolderName]);
+        $servicePath = implode(DIRECTORY_SEPARATOR, [basePath(), $this->appPath, $this->servicePath]);
 
         if (is_dir($servicePath)) {
             $services = array_filter(glob(implode(DIRECTORY_SEPARATOR, [$servicePath, '*.php'])), 'file_exists');
         }
+
+        $class = nix('anonymous');
 
         foreach ($services as $service) {
             $serviceClass = basename($service, '.php');
@@ -171,6 +173,7 @@ class App extends Core
                 return new $serviceClass(...$args);
             });
         }
+
         return $class;
     }
 }

@@ -2,70 +2,68 @@
 
 namespace Debva\Nix;
 
-class Queue
+class Task
 {
-    protected $queueFolderName = 'queue';
-
-    protected $queueFiles = [];
-
     protected $db;
+
+    protected $taskFiles = [];
 
     public function __construct()
     {
-        if (!defined('QUEUE_ALL')) {
-            define('QUEUE_ALL', true);
+        if (!defined('TASK_ALL')) {
+            define('TASK_ALL', true);
         }
 
-        if (!defined('QUEUE_PENDING')) {
-            define('QUEUE_PENDING', 'PENDING');
+        if (!defined('TASK_PENDING')) {
+            define('TASK_PENDING', 'PENDING');
         }
 
-        if (!defined('QUEUE_RUNNING')) {
-            define('QUEUE_RUNNING', 'RUNNING');
+        if (!defined('TASK_RUNNING')) {
+            define('TASK_RUNNING', 'RUNNING');
         }
 
-        if (!defined('QUEUE_SUCCESS')) {
-            define('QUEUE_SUCCESS', 'SUCCESS');
+        if (!defined('TASK_SUCCESS')) {
+            define('TASK_SUCCESS', 'SUCCESS');
         }
 
-        if (!defined('QUEUE_FAILURE')) {
-            define('QUEUE_FAILURE', 'FAILURE');
+        if (!defined('TASK_FAILURE')) {
+            define('TASK_FAILURE', 'FAILURE');
         }
 
-        $this->db = new Database;
+        $this->db = nix('db');
     }
 
     public function __invoke()
     {
-        $queuePath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', 'app', $this->queueFolderName]);
-        $queues = $this->getPendingQueue();
-        $this->queueFiles = array_filter(glob(implode(DIRECTORY_SEPARATOR, [$queuePath, '*.php'])), 'file_exists');
+        $taskPath = implode(DIRECTORY_SEPARATOR, [getcwd(), '..', 'app', 'tasks']);
+        $tasks = $this->getPendingTask();
+        $this->taskFiles = array_filter(glob(implode(DIRECTORY_SEPARATOR, [$taskPath, '*.php'])), 'file_exists');
 
-        return $this->runQueue($queues, $queuePath);
+        return $this->runTask($tasks, $taskPath);
     }
 
-    private function runQueue($queues, $queuePath)
+    private function runTask($tasks, $taskPath)
     {
-        $queue = array_shift($queues);
+        $task = array_shift($tasks);
 
         if (
-            in_array("{$queue['class']}.php", array_map('basename', $this->queueFiles)) &&
-            (is_null($queue['run_at']) || strtotime($queue['run_at']) <= time()) &&
-            !empty($queue['class']) && !empty($queue['method']) &&
-            $queue['status'] == QUEUE_PENDING
+            in_array("{$task['class']}.php", array_map('basename', $this->taskFiles)) &&
+            (is_null($task['run_at']) || strtotime($task['run_at']) <= time()) &&
+            !empty($task['class']) && !empty($task['method']) &&
+            $task['status'] == TASK_PENDING
         ) {
             try {
-                $this->updateQueue($queue['id'], function ($query) {
-                    $query->status(QUEUE_RUNNING);
+                $this->updateTask($task['id'], function ($query) {
+                    $query->status(TASK_RUNNING);
                 });
 
-                $file = implode(DIRECTORY_SEPARATOR, [$queuePath, "{$queue['class']}.php"]);
+                $file = implode(DIRECTORY_SEPARATOR, [$taskPath, "{$task['class']}.php"]);
                 require_once($file);
 
-                $class = new $queue['class'];
-                $reflection = new \ReflectionMethod($class, $queue['method']);
+                $class = new $task['class'];
+                $reflection = new \ReflectionMethod($class, $task['method']);
 
-                $parameter = (is_null($queue['parameter']) && !json_decode($queue['parameter'])) ? [] : json_decode($queue['parameter']);
+                $parameter = (is_null($task['parameter']) && !json_decode($task['parameter'])) ? [] : json_decode($task['parameter']);
                 $parameters = $reflection->getParameters();
 
                 $arguments = [];
@@ -75,36 +73,36 @@ class Queue
                 }
 
 
-                $result = $class->{$queue['method']}(...$arguments);
+                $result = $class->{$task['method']}(...$arguments);
                 if (!$result) {
-                    throw new \Exception('Queue failed to run!');
+                    throw new \Exception('Task failed to run!');
                 }
 
-                $this->updateQueue($queue['id'], function ($query) {
-                    $query->status(QUEUE_SUCCESS);
+                $this->updateTask($task['id'], function ($query) {
+                    $query->status(TASK_SUCCESS);
                 });
             } catch (\Exception $e) {
-                $loop = (int) $queue['loop'];
-                $this->updateQueue($queue['id'], function ($query) use ($loop) {
-                    $query->status($loop > 0 ? QUEUE_PENDING : QUEUE_FAILURE)
+                $loop = (int) $task['loop'];
+                $this->updateTask($task['id'], function ($query) use ($loop) {
+                    $query->status($loop > 0 ? TASK_PENDING : TASK_FAILURE)
                         ->loop($loop > 0 ? --$loop : 0);
                 });
             }
 
-            return $this->runQueue($queues, $queuePath);
+            return $this->runTask($tasks, $taskPath);
         }
 
-        return $this->getPendingQueue();
+        return $this->getPendingTask();
     }
 
-    private function getPendingQueue()
+    private function getPendingTask()
     {
         try {
-            $queue = $this->getQueue(QUEUE_PENDING);
-            return $this->db->query($queue->query(), $queue->bindings())->fetchAll();
+            $task = $this->getTask(TASK_PENDING);
+            return $this->db->query($task->query(), $task->bindings())->fetchAll();
         } catch (\Exception $e) {
             return $this->import($e->getMessage(), function () {
-                return $this->getPendingQueue();
+                return $this->getPendingTask();
             });
         }
     }
@@ -112,12 +110,12 @@ class Queue
     private function import($message = null, \Closure $callback)
     {
         try {
-            $table = $this->db->query("SHOW TABLES LIKE ?", ['schedulers'])->fetchColumn();
+            $table = $this->db->query("SHOW TABLES LIKE ?", ['tasks'])->fetchColumn();
 
             if (!$table) {
-                $sql = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', 'sql', 'schedulers.sql']);
+                $sql = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', 'sql', 'tasks.sql']);
                 if (!file_exists($sql)) {
-                    throw new \Exception('Schedulers SQL file not found!');
+                    throw new \Exception('Task SQL file not found!');
                 }
 
                 $pdo = $this->db->getConnection();
@@ -132,7 +130,7 @@ class Queue
         }
     }
 
-    public function addQueue(\Closure $callback)
+    public function addTask(\Closure $callback)
     {
         $class = new Anonymous;
         $macros = [
@@ -172,7 +170,7 @@ class Queue
 
         try {
             $this->db->query(
-                "INSERT INTO `schedulers` (title, class, method, parameter, `loop`, run_at) VALUE (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO `tasks` (title, class, method, parameter, `loop`, run_at) VALUE (?, ?, ?, ?, ?, ?)",
                 [
                     $arguments['title'],
                     $arguments['class'],
@@ -186,12 +184,12 @@ class Queue
             return true;
         } catch (\Exception $e) {
             return $this->import($e->getMessage(), function () use ($callback) {
-                return $this->addQueue($callback);
+                return $this->addTask($callback);
             });
         }
     }
 
-    public function getQueue($status = QUEUE_ALL)
+    public function getTask($status = TASK_ALL)
     {
         if (!in_array($status, range(0, 5))) {
             throw new \Exception("Status not found!", 500);
@@ -206,12 +204,12 @@ class Queue
         }
 
         return $this->db->raw(
-            trim(implode(' ', ['SELECT * FROM `schedulers`', $sql, 'ORDER by id ASC'])),
+            trim(implode(' ', ['SELECT * FROM `tasks`', $sql, 'ORDER by id ASC'])),
             $bindings
         );
     }
 
-    public function updateQueue($queueId, \Closure $callback)
+    public function updateTask($taskId, \Closure $callback)
     {
         $class = new Anonymous;
         $macros = [
@@ -235,7 +233,7 @@ class Queue
 
         $callback($class);
 
-        $query = "UPDATE `schedulers` SET";
+        $query = "UPDATE `tasks` SET";
         $queries = $bindings = [];
 
         foreach ($arguments as $method => $value) {
@@ -273,25 +271,25 @@ class Queue
         try {
             $this->db->query(
                 implode(' ', [$query, implode(', ', $queries), 'WHERE id = ?']),
-                array_merge($bindings, [$queueId])
+                array_merge($bindings, [$taskId])
             );
 
             return true;
         } catch (\Exception $e) {
-            return $this->import($e->getMessage(), function () use ($queueId, $callback) {
-                return $this->updateQueue($queueId, $callback);
+            return $this->import($e->getMessage(), function () use ($taskId, $callback) {
+                return $this->updateTask($taskId, $callback);
             });
         }
     }
 
-    public function removeQueue($queueId)
+    public function deleteTask($taskId)
     {
         try {
-            $this->db->query('DELETE FROM queue WHERE id = ?', [$queueId]);
+            $this->db->query('DELETE FROM `tasks` WHERE id = ?', [$taskId]);
             return true;
         } catch (\Exception $e) {
-            return $this->import($e->getMessage(), function () use ($queueId) {
-                return $this->removeQueue($queueId);
+            return $this->import($e->getMessage(), function () use ($taskId) {
+                return $this->deleteTask($taskId);
             });
         }
     }

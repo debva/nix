@@ -2,135 +2,168 @@
 
 namespace Debva\Nix;
 
-class Session extends Environment
+class Session
 {
-    protected $session;
+    protected $name;
 
-    protected $sessionPath;
+    protected $data = [];
 
-    public function __construct()
+    protected $expiresAt;
+
+    protected $table;
+
+    protected $fields;
+
+    public function __construct($name = null)
     {
-        parent::__construct();
+        $table = env('SESSION_TABLE', 'sessions:name,data,expires_at');
+        $table = array_filter(explode(':', $table));
 
-        $this->sessionPath = implode(DIRECTORY_SEPARATOR, [$this->rootPath, 'storage', 'sessions']);
-
-        if (!file_exists($this->sessionPath)) {
-            mkdir($this->sessionPath, 0755, true);
+        if (count($table) < 2) {
+            throw new \Exception('Session table not valid!', 500);
         }
-    }
 
-    public function __invoke($session)
-    {
-        $this->session = md5($session);
+        list($table, $fields) = $table;
+        $fields = array_filter(explode(',', $fields));
+
+        if (count($fields) < 3) {
+            throw new \Exception('Session table not valid!', 500);
+        }
+
+        $this->name = is_null($name)
+            ? (isset($headers['Authorization'])
+                ? md5($headers['Authorization'])
+                : md5(microtime(true)))
+            : $name;
+
+        $this->table = $table;
+
+        $this->fields = $fields;
     }
 
     public function start($name = null)
     {
-        $session = !is_null($name) ? md5($name) : md5(microtime(true));
-        $sessionFile = implode(DIRECTORY_SEPARATOR, [$this->sessionPath, $session]);
-        if (!file_exists($sessionFile)) {
-            file_put_contents($sessionFile, serialize([]));
+        $this->name = is_null($name) ? $this->name : md5($name);
+
+        $this->expiresAt = env('SESSION_LIFETIME', null);
+
+        if (!is_null($this->expiresAt) && !is_int($this->expiresAt)) {
+            throw new \Exception('Session lifetime must be an integer!');
         }
 
-        return $session;
-    }
+        $fields = implode(', ', $this->fields);
 
-    public function set($key, $value)
-    {
-        if (!$this->session) {
-            return false;
-        }
+        query(
+            "INSERT INTO {$this->table} ($fields)
+            SELECT * FROM (SELECT :a AS `{$this->fields[0]}`, :b AS `{$this->fields[1]}`, :c AS `{$this->fields[2]}`) AS temp 
+            WHERE NOT EXISTS (SELECT `{$this->fields[0]}` FROM {$this->table} WHERE `{$this->fields[0]}` = :a)",
+            [
+                'a' => $this->name,
+                'b' => serialize($this->data),
+                'c' => is_null($this->expiresAt) ? null : date('Y-m-d H:i:s', ($this->expiresAt + time())),
+            ]
+        );
 
-        $sessionFile = implode(DIRECTORY_SEPARATOR, [$this->sessionPath, $this->session]);
-        if (!file_exists($sessionFile)) {
-            return false;
-        }
-
-        $data = unserialize(file_get_contents($sessionFile));
-        file_put_contents($sessionFile, serialize(array_merge($data, [$key => $value])));
-        return true;
-    }
-
-    public function get($key)
-    {
-        if (!$this->session) {
-            return false;
-        }
-
-        $sessionFile = implode(DIRECTORY_SEPARATOR, [$this->sessionPath, $this->session]);
-        if (!file_exists($sessionFile)) {
-            return false;
-        }
-
-        $data = unserialize(file_get_contents($sessionFile));
-        if (!isset($data[$key])) {
-            return false;
-        }
-
-        return $data[$key];
-    }
-
-    public function delete($key)
-    {
-        if (!$this->session) {
-            return false;
-        }
-
-        $sessionFile = implode(DIRECTORY_SEPARATOR, [$this->sessionPath, $this->session]);
-        if (!file_exists($sessionFile)) {
-            return false;
-        }
-
-        $data = unserialize(file_get_contents($sessionFile));
-        if (!isset($data[$key])) {
-            return false;
-        }
-
-        unset($data[$key]);
-        file_put_contents($sessionFile, serialize($data));
-        return true;
+        return $this->name;
     }
 
     public function renew($name = null)
     {
-        if (!$this->session) {
-            return false;
+        $session = query(
+            "SELECT {$this->fields[1]}, {$this->fields[2]} FROM {$this->table} WHERE {$this->fields[0]} = :a",
+            ['a' => $this->name]
+        )->fetchObject();
+
+        if (!$session || (!is_null($session->expires_at) && $session->expires_at < time())) {
+            throw new \Exception('Session not found!', 404);
         }
 
-        $sessionFile = implode(DIRECTORY_SEPARATOR, [$this->sessionPath, $this->session]);
-        if (!file_exists($sessionFile)) {
-            return false;
+        $this->expiresAt = env('SESSION_LIFETIME', null);
+
+        query(
+            "UPDATE {$this->table} SET {$this->fields[0]} = :d, {$this->fields[2]} = :c WHERE {$this->fields[0]} = :a",
+            [
+                'a' => $this->name,
+                'c' => is_null($this->expiresAt) ? null : date('Y-m-d H:i:s', ($this->expiresAt + time())),
+                'd' => is_null($name) ? $this->name : md5($name)
+            ]
+        );
+
+        return $this->name;
+    }
+
+    public function put($key, $value)
+    {
+        $session = query(
+            "SELECT {$this->fields[1]}, {$this->fields[2]} FROM {$this->table} WHERE {$this->fields[0]} = :a",
+            ['a' => $this->name]
+        )->fetchObject();
+
+        if (!$session || (!is_null($session->expires_at) && $session->expires_at < time())) {
+            throw new \Exception('Session not found!', 404);
         }
 
-        $session = !is_null($name) ? md5($name) : md5(microtime(true));
-        if (!rename($sessionFile, implode(DIRECTORY_SEPARATOR, [dirname($sessionFile), $session]))) {
-            return false;
+        $data = serialize(array_merge(unserialize($session->data), [$key => $value]));
+
+        query(
+            "UPDATE {$this->table} SET {$this->fields[1]} = :b WHERE {$this->fields[0]} = :a",
+            ['a' => $this->name, 'b' => $data]
+        );
+
+        return true;
+    }
+
+    public function get($key = null)
+    {
+        $session = query(
+            "SELECT {$this->fields[1]}, {$this->fields[2]} FROM {$this->table} WHERE {$this->fields[0]} = :a",
+            ['a' => $this->name]
+        )->fetchObject();
+
+        if (!$session || (!is_null($session->expires_at) && $session->expires_at < time())) {
+            throw new \Exception('Session not found!', 404);
         }
+
+        $data = unserialize($session->data);
+
+        return is_null($key) ? $data : (isset($data[$key]) ? $data[$key] : false);
+    }
+
+    public function delete($key)
+    {
+        $session = query(
+            "SELECT {$this->fields[1]}, {$this->fields[2]} FROM {$this->table} WHERE {$this->fields[0]} = :a",
+            ['a' => $this->name]
+        )->fetchObject();
+
+        if (!$session || (!is_null($session->expires_at) && $session->expires_at < time())) {
+            throw new \Exception('Session not found!', 404);
+        }
+
+        $data = unserialize($session->data);
+        unset($data[$key]);
+
+        query(
+            "UPDATE {$this->table} SET {$this->fields[1]} = :b WHERE {$this->fields[0]} = :a",
+            ['a' => $this->name, 'b' => serialize($data)]
+        );
 
         return true;
     }
 
     public function destroy()
     {
-        if (!$this->session) {
-            return false;
-        }
+        query(
+            "DELETE FROM {$this->table} WHERE {$this->fields[0]} = :a",
+            ['a' => $this->name]
+        );
 
-        $sessionFile = implode(DIRECTORY_SEPARATOR, [$this->sessionPath, $this->session]);
-        if (!file_exists($sessionFile)) {
-            return false;
-        }
-
-        unlink($sessionFile);
         return true;
     }
 
     public function purge()
     {
-        $deletedFiles = array_map('unlink', glob(implode(DIRECTORY_SEPARATOR, [$this->sessionPath, '*'])));
-        if (in_array(false, $deletedFiles, true)) {
-            return false;
-        }
+        query("DELETE FROM {$this->table} WHERE {$this->fields[2]} < NOW()");
 
         return true;
     }

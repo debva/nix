@@ -37,35 +37,35 @@ class Authentication extends Authorization
         }
     }
 
-    protected function generateSignature($algorithm, $data, $signingKey, $privateKey = null)
+    protected function generateSignature($algorithm, $data, $privateKey = null)
     {
         $algorithmUsed = substr($algorithm, 0, 2);
         $algorithm = $this->algorithms[$algorithm];
 
         switch ($algorithmUsed) {
             case 'HS':
-                return base64_encode($this->crypt->hmac($algorithm, $data, $signingKey));
+                return base64_encode($this->crypt->hmac($algorithm, $data));
 
             case 'PS':
             case 'RS':
-                $data = implode('|', [$algorithm, $data, $signingKey]);
+                $data = implode('|', [$algorithm, $data]);
                 $privateKey = $this->crypt->getPrivateKey($privateKey);
                 return $this->crypt->generateSignature($data, $privateKey, $algorithm);
         }
     }
 
-    protected function verifySignature($algorithm, $data, $signature, $signingKey, $publicKey = null)
+    protected function verifySignature($algorithm, $data, $signature, $publicKey = null)
     {
         $algorithmUsed = substr($algorithm, 0, 2);
         $algorithm = $this->algorithms[$algorithm];
 
         switch ($algorithmUsed) {
             case 'HS':
-                return base64_encode($this->crypt->hmac($algorithm, $data, $signingKey)) === $signature;
+                return base64_encode($this->crypt->hmac($algorithm, $data)) === $signature;
 
             case 'PS':
             case 'RS':
-                $data = implode('|', [$algorithm, $data, $signingKey]);
+                $data = implode('|', [$algorithm, $data]);
                 $publicKey = $this->crypt->getPublicKey($publicKey);
                 return $this->crypt->verifySignature($data, $signature, $publicKey, $algorithm);
         }
@@ -108,12 +108,7 @@ class Authentication extends Authorization
             return $self;
         });
 
-        $class->macro('save', function ($self, $key, $value) use (&$payloads) {
-            $payloads[$key] = $value;
-            return $self;
-        });
-
-        $class->macro('signature', function ($self, $algorithm, $signingKey, $privateKey = null) use (&$token, &$headers, &$payloads) {
+        $class->macro('signature', function ($self, $algorithm, $privateKey = null) use (&$token, &$headers, &$payloads) {
             if (!in_array($algorithm, array_keys($this->algorithms))) {
                 throw new \Exception('Invalid algorithm!');
             }
@@ -123,8 +118,42 @@ class Authentication extends Authorization
                 str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(json_encode($payloads)))
             ]);
 
-            $signature = $this->generateSignature($algorithm, $headerPayload, $signingKey, $privateKey);
-            $token = base64_encode($this->crypt->encrypt(implode('.', [$headerPayload, $signature]), 'AES-256-CBC', $signingKey));
+            $signature = $this->generateSignature($algorithm, $headerPayload, $privateKey);
+            $token = base64_encode($this->crypt->encrypt(implode('.', [$headerPayload, $signature]), 'AES-256-CBC'));
+
+            return $self;
+        });
+
+        $class->macro('save', function ($self, $userId = null, $parentId = null) use (&$token, &$payloads) {
+            $table = env('AUTH_TOKEN_TABLE', 'tokens:parent_id,user_id,token,expires_at');
+            $table = array_filter(explode(':', $table));
+
+            if (count($table) < 2) {
+                throw new \Exception('Auth token table not valid!', 500);
+            }
+
+            list($table, $fields) = $table;
+            $fields = array_filter(explode(',', $fields));
+
+            if (count($fields) < 3) {
+                throw new \Exception('Auth token table not valid!', 500);
+            }
+
+            $field = implode(', ', $fields);
+
+            if (!is_null($token)) {
+                query(
+                    "INSERT INTO {$table} ({$field})
+                    SELECT * FROM (SELECT :a AS `{$fields[0]}`, :b AS `{$fields[1]}`, :c AS `{$fields[2]}`, :d AS `{$fields[3]}`) AS temp 
+                    WHERE NOT EXISTS (SELECT `{$fields[2]}` FROM {$table} WHERE `{$fields[2]}` = :c)",
+                    [
+                        'a' => $parentId,
+                        'b' => $userId,
+                        'c' => md5($token),
+                        'd' => isset($payloads['exp']) ? date('Y-m-d H:i:s', $payloads['exp']) : null,
+                    ]
+                );
+            }
 
             return $self;
         });
@@ -134,13 +163,13 @@ class Authentication extends Authorization
         return $token;
     }
 
-    public function verify($token, $signingKey, $publicKey = null)
+    public function verify($token, $publicKey = null)
     {
         if (!$this->crypt->isBase64($token)) {
             return false;
         }
 
-        $token = $this->crypt->decrypt(base64_decode($token), 'AES-256-CBC', $signingKey);
+        $token = $this->crypt->decrypt(base64_decode($token), 'AES-256-CBC');
         if (!$token) {
             return false;
         }
@@ -172,17 +201,17 @@ class Authentication extends Authorization
             return false;
         }
 
-        if (!$this->verifySignature($algorithm, $data, $signature, $signingKey, $publicKey)) {
+        if (!$this->verifySignature($algorithm, $data, $signature, $publicKey)) {
             return false;
         }
 
         return true;
     }
 
-    public function claim($token, $signingKey, \Closure $claims)
+    public function claim($token, \Closure $claims)
     {
         $isVerified = true;
-        $payload = $this->parse($token, $signingKey);
+        $payload = $this->parse($token);
 
         if (!$payload) {
             return false;
@@ -225,13 +254,15 @@ class Authentication extends Authorization
         return $isVerified;
     }
 
-    public function parse($token, $signingKey)
+    public function parse($token = null)
     {
+        $token = is_null($token) ? $this->token : $token;
+
         if (!$this->crypt->isBase64($token)) {
             return false;
         }
 
-        $token = $this->crypt->decrypt(base64_decode($token), 'AES-256-CBC', $signingKey);
+        $token = $this->crypt->decrypt(base64_decode($token), 'AES-256-CBC');
         if (!$token) {
             return false;
         }

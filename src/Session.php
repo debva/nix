@@ -41,11 +41,11 @@ class Session
         $this->fields = $fields;
     }
 
-    public function start($name = null)
+    public function start($name = null, $lifetime = null)
     {
         $this->name = is_null($name) ? $this->name : md5($name);
 
-        $this->expiresAt = env('SESSION_LIFETIME', null);
+        $this->expiresAt = is_null($lifetime) ? env('SESSION_LIFETIME', null) : $lifetime;
 
         if (!is_null($this->expiresAt) && !is_int($this->expiresAt)) {
             throw new \Exception('Session lifetime must be an integer!');
@@ -67,47 +67,55 @@ class Session
         return $this->name;
     }
 
-    public function renew($name = null)
+    public function renew($name = null, $lifetime = null)
     {
         $session = query(
             "SELECT {$this->fields[1]}, {$this->fields[2]} FROM {$this->table} WHERE {$this->fields[0]} = :a",
             ['a' => $this->name]
         )->fetchObject();
 
-        if (!$session || (!is_null($session->expires_at) && $session->expires_at < time())) {
+        if (!$session || (!is_null($session->expires_at) && strtotime($session->expires_at) < time())) {
             throw new \Exception('Session not found!', 404);
         }
 
-        $this->expiresAt = env('SESSION_LIFETIME', null);
+        $this->expiresAt = is_null($lifetime) ? env('SESSION_LIFETIME', null) : $lifetime;
+
+        $name = is_null($name) ? $this->name : md5($name);
 
         query(
             "UPDATE {$this->table} SET {$this->fields[0]} = :d, {$this->fields[2]} = :c WHERE {$this->fields[0]} = :a",
             [
                 'a' => $this->name,
                 'c' => is_null($this->expiresAt) ? null : date('Y-m-d H:i:s', ($this->expiresAt + time())),
-                'd' => is_null($name) ? $this->name : md5($name)
+                'd' => $name
             ]
         );
 
-        return $this->name;
+        return $this->name = $name;
     }
 
-    public function put($key, $value)
+    public function put($key, $value = null)
     {
         $session = query(
             "SELECT {$this->fields[1]}, {$this->fields[2]} FROM {$this->table} WHERE {$this->fields[0]} = :a",
             ['a' => $this->name]
         )->fetchObject();
 
-        if (!$session || (!is_null($session->expires_at) && $session->expires_at < time())) {
+        if (!$session || (!is_null($session->expires_at) && strtotime($session->expires_at) < time())) {
             throw new \Exception('Session not found!', 404);
         }
 
-        $data = serialize(array_merge(unserialize($session->data), [$key => $value]));
+        $data = unserialize($session->data);
+
+        if (is_array($key)) {
+            foreach ($key as $key => $value) $data = array_merge($data, [$key => $value]);
+        } else {
+            $data = array_merge($data, [$key => $value]);
+        }
 
         query(
             "UPDATE {$this->table} SET {$this->fields[1]} = :b WHERE {$this->fields[0]} = :a",
-            ['a' => $this->name, 'b' => $data]
+            ['a' => $this->name, 'b' => serialize($data)]
         );
 
         return true;
@@ -120,7 +128,7 @@ class Session
             ['a' => $this->name]
         )->fetchObject();
 
-        if (!$session || (!is_null($session->expires_at) && $session->expires_at < time())) {
+        if (!$session || (!is_null($session->expires_at) && strtotime($session->expires_at) < time())) {
             throw new \Exception('Session not found!', 404);
         }
 
@@ -136,7 +144,7 @@ class Session
             ['a' => $this->name]
         )->fetchObject();
 
-        if (!$session || (!is_null($session->expires_at) && $session->expires_at < time())) {
+        if (!$session || (!is_null($session->expires_at) && strtotime($session->expires_at) < time())) {
             throw new \Exception('Session not found!', 404);
         }
 

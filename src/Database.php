@@ -21,7 +21,7 @@ class Database
 
         try {
             if (!isset($connection, $host, $dbname, $user, $password)) {
-                throw new \Exception('Invalid database connection!');
+                throw new \Exception('Invalid database connection!', 500);
             }
 
             $dsn = "{$connection}:host={$host};port={$port};dbname={$dbname}";
@@ -32,7 +32,7 @@ class Database
 
             $this->database = new \PDO($dsn, $user, $password, $options);
         } catch (\PDOException $e) {
-            throw new \PDOException($e->getMessage());
+            throw new \PDOException($e->getMessage(), 500);
         }
     }
 
@@ -71,8 +71,19 @@ class Database
     {
         $this->beginTransaction();
         try {
+            if (is_array($query)) {
+                foreach ($query as $bindings => $sql) {
+                    $statement = $this->database->prepare($sql);
+                    $statement->execute(is_array($bindings) ? $bindings : null);
+                }
+
+                $this->commit();
+                return true;
+            }
+
             $statement = $this->database->prepare($query);
             $statement->execute($bindings);
+
             $this->commit();
             return $statement;
         } catch (\PDOException $e) {

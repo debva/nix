@@ -10,8 +10,9 @@ class Cryptography
         return ($decoded !== false && base64_encode($decoded) === $value);
     }
 
-    public function hmac($algo, $data, $key, $binary = true)
+    public function hmac($algo, $data, $binary = true)
     {
+        $key = getenv('APP_KEY') ? getenv('APP_KEY') : 'NIX_SECRET';
         return hash_hmac($algo, $data, $key, $binary);
     }
 
@@ -98,7 +99,7 @@ class Cryptography
 
     public function encrypt($data, $cipher_algo, $passphrase = null)
     {
-        $key = getenv('APP_KEY') ? getenv('APP_KEY') : '12345ABCDE';
+        $key = getenv('APP_KEY') ? getenv('APP_KEY') : 'NIX_SECRET';
         $passphrase = $passphrase ? $passphrase : $key;
 
         $iv = substr(base64_encode($passphrase ? $passphrase : $key), 0, 15);
@@ -109,7 +110,7 @@ class Cryptography
 
     public function decrypt($data, $cipher_algo, $passphrase = null)
     {
-        $key = getenv('APP_KEY') ? getenv('APP_KEY') : '12345ABCDE';
+        $key = getenv('APP_KEY') ? getenv('APP_KEY') : 'NIX_SECRET';
         $passphrase = $passphrase ? $passphrase : $key;
 
         $iv = substr(base64_encode($passphrase ? $passphrase : $key), 0, 15);

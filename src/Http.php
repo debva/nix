@@ -51,13 +51,11 @@ class Http
                 CURLOPT_CUSTOMREQUEST   => 'POST',
             ]);
 
-            // dd($body);
             if (!empty($body)) curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
             if (!empty($headers)) curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
 
             $response = curl_exec($curl);
 
-            // dd($response);
             if (curl_errno($curl)) throw new \Exception(curl_error($curl));
             curl_close($curl);
 

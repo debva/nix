@@ -98,9 +98,9 @@ if (!function_exists('bpjs')) {
 }
 
 if (!function_exists('inacbg')) {
-    function inacbg($options, $isProduction = false)
+    function inacbg($baseUrl, $key)
     {
-        return nix('inacbg', $options, $isProduction);
+        return nix('inacbg', $baseUrl, $key);
     }
 }
 

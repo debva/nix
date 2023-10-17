@@ -21,12 +21,16 @@ class INACBGs
 
         $response = http()->post($this->baseUrl, [], $payload);
 
+        if (is_null($response)) {
+            return false;
+        }
+
         return $this->decrypt($response);
     }
 
     protected function encrypt($data)
     {
-        $key = hex2bin($this->key);
+        $key = hex2bin($this->key ? $this->key : '');
 
         if (mb_strlen($key, '8bit') !== 32) {
             throw new \Exception('Needs a 256-bit key!');
@@ -56,7 +60,7 @@ class INACBGs
 
     protected function decrypt($string)
     {
-        $key = hex2bin($this->key);
+        $key = hex2bin($this->key ? $this->key : '');
 
         if (mb_strlen($key, '8bit') !== 32) {
             throw new \Exception('Needs a 256-bit key!');

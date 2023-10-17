@@ -24,7 +24,7 @@ class Http
             if (!empty($headers)) curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
 
             $response = curl_exec($curl);
-            
+
             if (curl_errno($curl)) throw new \Exception(curl_error($curl));
             curl_close($curl);
 
@@ -51,7 +51,7 @@ class Http
                 CURLOPT_CUSTOMREQUEST   => 'POST',
             ]);
 
-            if (!empty($body)) curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
+            if (!empty($body)) curl_setopt($curl, CURLOPT_POSTFIELDS, is_array($body) ? json_encode($body) : $body);
             if (!empty($headers)) curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
 
             $response = curl_exec($curl);

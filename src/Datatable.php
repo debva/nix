@@ -34,14 +34,13 @@ class Datatable
         if ($data instanceof Anonymous && $data->database() instanceof \PDO) {
             $db = $data;
             $bindings = $data->bindings();
-
             $quote = $db->connection() === 'pgsql' ? '"' : '`';
 
             $searchQuery = null;
             if (!empty($request['search']) && is_array($request['search'])) {
                 $searchQuery = [];
                 foreach ($request['search'] as $column => $value) {
-                    $binding = strtoupper("NIX_DT_SEARCH_{$column}");
+                    $binding = strtoupper("_NIX_DT_SEARCH_{$column}");
                     $bindings = array_merge($bindings, [$binding => "%{$value}%"]);
                     $searchQuery[] = $quote . implode("{$quote}.{$quote}", explode('.', $column)) . "{$quote} LIKE :{$binding}";
                 }
@@ -53,7 +52,7 @@ class Datatable
             if (!empty($request['filter']) && is_array($request['filter'])) {
                 $filterQuery = [];
                 foreach ($request['filter'] as $column => $value) {
-                    $binding = strtoupper("NIX_DT_FILTER_{$column}");
+                    $binding = strtoupper("_NIX_DT_FILTER_{$column}");
                     $bindings = array_merge($bindings, [$binding => "%{$value}%"]);
                     $filterQuery[] = $quote . implode("{$quote}.{$quote}", explode('.', $column)) . "{$quote} LIKE :{$binding}";
                 }
@@ -69,8 +68,13 @@ class Datatable
                         $orderQuery[] = $quote . implode("{$quote}.{$quote}", explode('.', $column)) . "{$quote} " . strtoupper($sort);
                     }
                 }
-                $orderQuery = implode(', ', $orderQuery);
-                $orderQuery = "ORDER BY {$orderQuery}";
+
+                if (empty($orderQuery)) {
+                    $orderQuery = null;
+                } else {
+                    $orderQuery = implode(', ', $orderQuery);
+                    $orderQuery = "ORDER BY {$orderQuery}";
+                }
             }
 
             $whereQuery = null;

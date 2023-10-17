@@ -94,7 +94,7 @@ class Validate
             exit;
         }
 
-        $request = $request(array_keys($attributeWithRule));
+        $request = request(array_keys($attributeWithRule));
         $request = $request ? $request : [];
         return $request;
     }

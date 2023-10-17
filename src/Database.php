@@ -8,6 +8,8 @@ class Database
 
     protected $connection;
 
+    protected $quote;
+
     public function __construct($connection = null)
     {
         if ($connection) $connection = "_" . strtoupper($connection);
@@ -22,6 +24,8 @@ class Database
         ];
 
         $this->connection = $connection;
+
+        $this->quote = in_array($connection, ['pgsql']) ? '"' : '`';
 
         try {
             if (!isset($connection, $host, $dbname, $user, $password)) {
@@ -65,6 +69,7 @@ class Database
         $class = new Anonymous;
         foreach ([
             'connection'    => strtolower($this->connection),
+            'quote'         => $this->quote,
             'database'      => $this->database,
             'query'         => $query,
             'bindings'      => $bindings

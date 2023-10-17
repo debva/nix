@@ -33,8 +33,9 @@ class Datatable
 
         if ($data instanceof Anonymous && $data->database() instanceof \PDO) {
             $db = $data;
+
+            $quote = $data->quote();
             $bindings = $data->bindings();
-            $quote = $db->connection() === 'pgsql' ? '"' : '`';
 
             $searchQuery = null;
             if (!empty($request['search']) && is_array($request['search'])) {

@@ -6,7 +6,8 @@
     "autoload": {
         "psr-4": {
             "Debva\\Nix\\": "src/",
-            "Debva\\Nix\\Console\\": "Console/"
+            "Debva\\Nix\\Console\\": "console/",
+            "Debva\\Nix\\Extension\\": "extensions/"
         },
         "files": ["src/Helper.php"]
     },

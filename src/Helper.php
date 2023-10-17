@@ -90,17 +90,10 @@ if (!function_exists('task')) {
     }
 }
 
-if (!function_exists('bpjs')) {
-    function bpjs($options, $isProduction = false)
+if (!function_exists('ext')) {
+    function ext()
     {
-        return nix('bpjs', $options, $isProduction);
-    }
-}
-
-if (!function_exists('inacbg')) {
-    function inacbg($baseUrl, $key)
-    {
-        return nix('inacbg', $baseUrl, $key);
+        return nix('ext');
     }
 }
 

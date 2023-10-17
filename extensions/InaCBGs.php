@@ -1,25 +1,25 @@
 <?php
 
-namespace Debva\Nix;
+namespace Debva\Nix\Extension;
 
-class INACBGs
+class InaCBGs
 {
+    protected $url = '';
+
     protected $key = '';
 
-    protected $baseUrl = '';
-
-    public function __construct($baseUrl, $key)
+    public function __construct($url, $key)
     {
-        $this->key = $key;
+        $this->url = $url;
 
-        $this->baseUrl = $baseUrl;
+        $this->key = $key;
     }
 
     public function __invoke($payload)
     {
         $payload = $this->encrypt($payload);
 
-        $response = http()->post($this->baseUrl, [], $payload);
+        $response = http()->post($this->url, [], $payload);
 
         if (is_null($response)) {
             return false;

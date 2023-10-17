@@ -13,12 +13,11 @@ class Nix
         $classes = [
             'anonymous' => Anonymous::class,
             'auth'      => Authentication::class,
-            'bpjs'      => BPJS::class,
-            'inacbg'    => INACBGs::class,
             'console'   => Console::class,
             'crypt'     => Cryptography::class,
             'db'        => Database::class,
             'datatable' => Datatable::class,
+            'ext'       => Extension::class,
             'http'      => Http::class,
             'task'      => Task::class,
             'request'   => Request::class,
@@ -32,10 +31,10 @@ class Nix
         ];
 
         if (!in_array($class, array_keys($classes))) {
-            throw new \Exception("Class {$class} is not defined!");
+            throw new \Exception("Class {$class} not found!");
         }
 
-        if (in_array($class, ['auth', 'crypt', 'http', 'task', 'request', 'response', 'route', 'storage'])) {
+        if (in_array($class, ['auth', 'crypt', 'ext', 'http', 'task', 'request', 'response', 'route', 'storage'])) {
             return isset($this->cacheClass[$class])
                 ? $this->cacheClass[$class]
                 : $this->cacheClass[$class] = new $classes[$class](...$args);

@@ -97,6 +97,13 @@ if (!function_exists('bpjs')) {
     }
 }
 
+if (!function_exists('inacbg')) {
+    function inacbg($options, $isProduction = false)
+    {
+        return nix('inacbg', $options, $isProduction);
+    }
+}
+
 if (!function_exists('db')) {
     function db($connection)
     {

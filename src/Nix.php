@@ -14,6 +14,7 @@ class Nix
             'anonymous' => Anonymous::class,
             'auth'      => Authentication::class,
             'bpjs'      => BPJS::class,
+            'inacbg'    => Inacbg::class,
             'console'   => Console::class,
             'crypt'     => Cryptography::class,
             'db'        => Database::class,

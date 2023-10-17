@@ -48,18 +48,11 @@ class Request
             }
 
             $keys = explode('.', $keys);
-            $result = [];
-            $arrayRef = &$result;
-
             foreach ($keys as $key) {
-                $arrayRef = &$arrayRef[$key];
                 $request = isset($request[$key])
                     ? $request[$key]
                     : (!is_null($default) ? $default : null);
             }
-
-            $arrayRef = $request;
-            return $result[reset($keys)];
         }
 
         return $request;

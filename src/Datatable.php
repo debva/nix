@@ -31,11 +31,19 @@ class Datatable
         $this->page = (int) $request['page'];
         $this->offset = ($this->page - 1) * $this->limit;
 
-        if ($data instanceof Anonymous && $data->connection() instanceof \PDO) {
+        if ($data instanceof Anonymous && $data->database() instanceof \PDO) {
+            $db = $data;
+            $bindings = $data->bindings();
+            $quote = $db->connection() === 'pgsql' ? '"' : '`';
+
             $searchQuery = null;
             if (!empty($request['search']) && is_array($request['search'])) {
                 $searchQuery = [];
-                foreach ($request['search'] as $column => $value) $searchQuery[] = '`' . implode('`.`', explode('.', $column)) . "` LIKE '%{$value}%'";
+                foreach ($request['search'] as $column => $value) {
+                    $binding = strtoupper("_NIX_DT_SEARCH_{$column}");
+                    $bindings = array_merge($bindings, [$binding => "%{$value}%"]);
+                    $searchQuery[] = $quote . implode("{$quote}.{$quote}", explode('.', $column)) . "{$quote} LIKE :{$binding}";
+                }
                 $searchQuery = implode(' OR ', $searchQuery);
                 $searchQuery = "({$searchQuery})";
             }
@@ -43,7 +51,11 @@ class Datatable
             $filterQuery = null;
             if (!empty($request['filter']) && is_array($request['filter'])) {
                 $filterQuery = [];
-                foreach ($request['filter'] as $column => $value) $filterQuery[] = '`' . implode('`.`', explode('.', $column)) . "` LIKE '%{$value}%'";
+                foreach ($request['filter'] as $column => $value) {
+                    $binding = strtoupper("_NIX_DT_FILTER_{$column}");
+                    $bindings = array_merge($bindings, [$binding => "%{$value}%"]);
+                    $filterQuery[] = $quote . implode("{$quote}.{$quote}", explode('.', $column)) . "{$quote} LIKE :{$binding}";
+                }
                 $filterQuery = implode(' AND ', $filterQuery);
                 $filterQuery = "({$filterQuery})";
             }
@@ -51,9 +63,18 @@ class Datatable
             $orderQuery = null;
             if (!empty($request['sort']) && is_array($request['sort'])) {
                 $orderQuery = [];
-                foreach ($request['sort'] as $column => $sort) $orderQuery[] = '`' . implode('`.`', explode('.', $column)) . "` " . strtoupper($sort);
-                $orderQuery = implode(', ', $orderQuery);
-                $orderQuery = "ORDER BY {$orderQuery}";
+                foreach ($request['sort'] as $column => $sort) {
+                    if (in_array(strtoupper($sort), ['ASC', 'DESC'])) {
+                        $orderQuery[] = $quote . implode("{$quote}.{$quote}", explode('.', $column)) . "{$quote} " . strtoupper($sort);
+                    }
+                }
+
+                if (empty($orderQuery)) {
+                    $orderQuery = null;
+                } else {
+                    $orderQuery = implode(', ', $orderQuery);
+                    $orderQuery = "ORDER BY {$orderQuery}";
+                }
             }
 
             $whereQuery = null;
@@ -62,21 +83,19 @@ class Datatable
                 $whereQuery = "WHERE {$whereQuery}";
             }
 
-            $database = $data;
-
-            $data = $database->connection()->prepare("SELECT COUNT(*) FROM ({$database->query()}) AS tbl");
-            $data->execute($database->bindings());
+            $data = $db->database()->prepare("SELECT COUNT(*) FROM ({$db->query()}) AS tbl");
+            $data->execute();
             $this->total = (int) $data->fetchColumn();
 
             if (!empty($whereQuery)) {
-                $data = $database->connection()->prepare("SELECT COUNT(*) FROM ({$database->query()}) AS tbl {$whereQuery}");
-                $data->execute($database->bindings());
+                $data = $db->database()->prepare("SELECT COUNT(*) FROM ({$db->query()}) AS tbl {$whereQuery}");
+                $data->execute($bindings);
                 $this->totalFiltered = (int) $data->fetchColumn();
             }
 
-            $query = trim("({$database->query()}) AS tbl {$whereQuery} {$orderQuery}");
-            $data = $database->connection()->prepare("SELECT * FROM {$query} LIMIT {$this->limit} OFFSET {$this->offset}");
-            $data->execute($database->bindings());
+            $query = trim("({$db->query()}) AS tbl {$whereQuery} {$orderQuery}");
+            $data = $db->database()->prepare("SELECT * FROM {$query} LIMIT {$this->limit} OFFSET {$this->offset}");
+            $data->execute($bindings);
             $this->data = $data->fetchAll();
         } else {
             $result = $data;

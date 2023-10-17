@@ -163,6 +163,18 @@ if (!function_exists('route')) {
     }
 }
 
+if (!function_exists('isMethod')) {
+    function isMethod(...$method)
+    {
+        $method = (count($method) < 1) ? null : array_map('strtoupper', $method);
+        $requestMethod = strtoupper($_SERVER['REQUEST_METHOD']);
+
+        return is_null($method)
+            ? $requestMethod
+            : in_array($requestMethod, $method);
+    }
+}
+
 if (!function_exists('userAgent')) {
     function userAgent($uagent)
     {

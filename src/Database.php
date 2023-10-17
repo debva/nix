@@ -6,9 +6,11 @@ class Database
 {
     protected $database;
 
+    protected $connection;
+
     public function __construct($connection = null)
     {
-        if ($connection) $connection = '_' . strtoupper($connection);
+        if ($connection) $connection = "_" . strtoupper($connection);
 
         list($connection, $host, $port, $dbname, $user, $password) = [
             env("DB{$connection}_CONNECTION"),
@@ -18,6 +20,8 @@ class Database
             env("DB{$connection}_USER"),
             env("DB{$connection}_PASSWORD"),
         ];
+
+        $this->connection = $connection;
 
         try {
             if (!isset($connection, $host, $dbname, $user, $password)) {
@@ -59,7 +63,12 @@ class Database
     public function raw($query, $bindings = [])
     {
         $class = new Anonymous;
-        foreach (['connection' => $this->database, 'query' => $query, 'bindings' => $bindings] as $method => $value) {
+        foreach ([
+            'connection'    => strtolower($this->connection),
+            'database'      => $this->database,
+            'query'         => $query,
+            'bindings'      => $bindings
+        ] as $method => $value) {
             $class->macro($method, function () use ($value) {
                 return $value;
             });

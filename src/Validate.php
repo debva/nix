@@ -63,14 +63,12 @@ class Validate
             }
         }
 
-        $request = nix('request');
-
         foreach ($attributeWithRule as $attribute => $rules) {
             foreach ($rules as $rule) {
                 $name = $rule['name'];
                 $method = $rule['method'];
                 $parameter = $rule['parameter'] ? $rule['parameter'] : [];
-                $value = $request($attribute);
+                $value = request($attribute);
 
                 $validate = ($method instanceof \Closure)
                     ? $method($value, ...$parameter)
@@ -92,12 +90,11 @@ class Validate
         }
 
         if (!empty($errors)) {
-            $response = nix('response');
-            $response(['validation' => $errors], 400);
+            response(['validation' => $errors], 400);
             exit;
         }
 
-        $request = $request(array_keys($attributeWithRule));
+        $request = request(array_keys($attributeWithRule));
         $request = $request ? $request : [];
         return $request;
     }

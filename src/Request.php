@@ -59,7 +59,7 @@ class Request
             }
 
             $arrayRef = $request;
-            return $result[reset($keys)];
+            return $request;
         }
 
         return $request;

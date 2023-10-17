@@ -6,7 +6,7 @@ abstract class Environment
 {
     public function __construct()
     {
-        if (!isset($_ENV['NIX_VERSION'])) {
+        if (!isset($_ENV['_NIX_VERSION'])) {
             $envPath = (new Storage)->basePath('.env');
 
             if (!file_exists($envPath)) {
@@ -21,7 +21,7 @@ abstract class Environment
                 define('FRAMEWORK_VERSION', '1.5.0');
             }
 
-            $_ENV['NIX_VERSION'] = FRAMEWORK_VERSION;
+            $_ENV['_NIX_VERSION'] = FRAMEWORK_VERSION;
             $lines = preg_split('/\r\n|\r|\n/', file_get_contents($envPath));
 
             foreach ($lines as $line) {
@@ -33,7 +33,7 @@ abstract class Environment
                 $name = trim($name);
                 $value = trim($value, "\"");
 
-                if (!array_key_exists($name, $_ENV) && !array_key_exists($name, $_SERVER)) {
+                if (!array_key_exists($name, $_ENV)) {
                     putenv(sprintf('%s=%s', $name, $value));
                     $_ENV[$name] = $value;
                 }

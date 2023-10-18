@@ -8,7 +8,7 @@ class Database
 
     protected $connection;
 
-    protected $quote;
+    protected $whereClause;
 
     public function __construct($connection = null)
     {
@@ -25,7 +25,7 @@ class Database
 
         $this->connection = $connection;
 
-        $this->quote = in_array($connection, ['pgsql']) ? '"' : '`';
+        $this->whereClause = in_array($connection, ['pgsql']) ? 'ILIKE' : 'LIKE';
 
         try {
             if (!isset($connection, $host, $dbname, $user, $password)) {
@@ -69,9 +69,9 @@ class Database
         $class = new Anonymous;
         foreach ([
             'connection'    => strtolower($this->connection),
-            'quote'         => $this->quote,
+            'whereClause'   => $this->whereClause,
             'database'      => $this->database,
-            'query'         => $query,
+            'query'         => preg_replace('/\s+/', ' ', $query),
             'bindings'      => $bindings
         ] as $method => $value) {
             $class->macro($method, function () use ($value) {

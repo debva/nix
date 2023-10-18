@@ -131,7 +131,7 @@ class Datatable
 
                 if (!empty($filter)) {
                     foreach ($filter as $column => $value) {
-                        $result = array_filter($result, function ($item) use ($column, $value, $result) {
+                        $result = array_filter($result, function ($item) use ($column, $value) {
                             if (isset($item[$column]) && strpos(strtolower($item[$column]), strtolower($value)) !== false) {
                                 return $item;
                             }

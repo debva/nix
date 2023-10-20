@@ -25,7 +25,7 @@ class Datatable
         $this->loadtime = microtime(true);
 
         $request = request('datatable');
-        $request = array_merge(['page' => 1, 'limit' => 10], $request);
+        $request = array_merge(['page' => 1, 'limit' => 10], is_null($request) ? [] : $request);
         $request['search'] = isset($request['search']) ? $request['search'] : [];
         $request['filter'] = isset($request['filter']) ? $request['filter'] : [];
         $request['sort'] = isset($request['sort']) ? $request['sort'] : [];

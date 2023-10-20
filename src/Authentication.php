@@ -242,6 +242,10 @@ class Authentication extends Authorization
             return $self;
         });
 
+        $class->macro('get', function ($self, $key) use ($payload) {
+            return isset($payload[$key]) ? $payload[$key] : false;
+        });
+
         $claims($class);
 
         foreach ($payloads as $key => $value) {

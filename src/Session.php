@@ -94,7 +94,7 @@ class Session
         return $this->name = $name;
     }
 
-    public function put($key, $value = null)
+    public function set($key, $value = null)
     {
         $session = query(
             "SELECT {$this->fields[1]}, {$this->fields[2]} FROM {$this->table} WHERE {$this->fields[0]} = :a",

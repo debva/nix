@@ -40,6 +40,13 @@ class App extends Bridge
         }
     }
 
+    public function __get($name)
+    {
+        if ($name === 'service') {
+            return $this->service();
+        }
+    }
+
     public function __invoke()
     {
         $requestPath = array_filter(explode('/', $this->requestPath));
@@ -93,13 +100,6 @@ class App extends Bridge
 
             return $action(...$arguments);
         });
-    }
-
-    public function __get($name)
-    {
-        if ($name === 'service') {
-            return $this->service();
-        }
     }
 
     private function handleError($type, $message, $code, $file, $line, $trace = [])

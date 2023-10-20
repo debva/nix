@@ -120,35 +120,42 @@ class Validate
     public function ruleEmail($value)
     {
         if (filter_var($value, FILTER_VALIDATE_EMAIL) === false) {
-            return 'The :attribute must be numeric';
+            return 'The :attribute field must be a valid email address';
         }
     }
 
     public function ruleNumeric($value)
     {
         if (!is_numeric($value)) {
-            return 'The :attribute must be numeric';
+            return 'The :attribute field must be a number';
         }
     }
 
     public function ruleInteger($value)
     {
         if (filter_var($value, FILTER_VALIDATE_INT) === false) {
-            return 'The :attribute must be integer';
+            return 'The :attribute field must be an integer';
+        }
+    }
+
+    public function ruleString($value)
+    {
+        if (!(is_string($value) && !is_numeric($value))) {
+            return 'The :attribute field must be a string.';
         }
     }
 
     public function ruleIn($value, ...$params)
     {
         if (!in_array($value, $params)) {
-            return 'The :attribute only allows ' . implode(', ', $params);
+            return 'The :attribute field must exist in ' . implode(', ', $params);
         }
     }
 
     public function ruleNotIn($value, ...$params)
     {
         if (in_array($value, $params)) {
-            return 'The :attribute is not allowing ' . implode(', ', $params);
+            return 'The :attribute field must not exist in ' . implode(', ', $params);
         }
     }
 }

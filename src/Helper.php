@@ -98,7 +98,7 @@ if (!function_exists('ext')) {
 }
 
 if (!function_exists('db')) {
-    function db($connection)
+    function db($connection = null)
     {
         return nix('db', $connection);
     }

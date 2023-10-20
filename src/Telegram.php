@@ -10,6 +10,8 @@ class Telegram
 
     protected $url = 'https://api.telegram.org/bot';
 
+    protected $fileUrl = 'https://api.telegram.org/file/bot';
+
     protected $endpoint;
 
     protected $parameter;
@@ -25,7 +27,7 @@ class Telegram
         try {
             if (in_array($endpoint, $this->endpointList())) {
                 $this->endpoint = $endpoint;
-                $this->parameter = end($parameter);
+                $this->parameter = reset($parameter);
                 return $this->send();
             }
 
@@ -43,9 +45,10 @@ class Telegram
     public function listenWebhook(\Closure $closure)
     {
         $listen = json_decode(file_get_contents('php://input'), true);
-        if (!is_null($listen) and isset($listen['callback_query'])) {
-            return $closure($listen['callback_query']['message']['message_id'], $listen['callback_query']);
+        if (!is_null($listen) and isset($listen['message'])) {
+            return $closure($listen['message']);
         }
+        return false;
     }
 
     public function authorize($authData, $exp = 86400)
@@ -74,6 +77,12 @@ class Telegram
         return $authData;
     }
 
+    public function getFileUrl($fileId)
+    {
+        $path = $this->getFile(['file_id' => $fileId]);
+        return isset($path->result->file_path) ? "{$this->fileUrl}{$this->token}/{$path->result->file_path}" : null;
+    }
+
     protected function send()
     {
         try {
@@ -97,6 +106,10 @@ class Telegram
             'setWebhook',
             'sendMessage',
             'editMessageText',
+
+            'getUserProfilePhotos',
+            'getFile'
+
         ];
     }
 }

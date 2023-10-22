@@ -14,6 +14,10 @@ class App extends Bridge
 
     protected $requestPath;
 
+    protected $requestMethod;
+
+    protected $httpMethod = ['__GET', '__POST', '__PUT', '__PATCH', '__DELETE'];
+
     public function __construct()
     {
         ini_set('display_errors', 'Off');
@@ -36,7 +40,9 @@ class App extends Bridge
         parent::__construct();
 
         if (!$this->requestPath) {
-            $this->requestPath = nix('route')->requestPath;
+            $route = nix('route');
+            $this->requestPath = $route->requestPath;
+            $this->requestMethod = $route->requestMethod;
         }
     }
 
@@ -64,7 +70,14 @@ class App extends Bridge
             }
         }
 
-        $basePath = implode(DIRECTORY_SEPARATOR, [basePath(), $this->appPath, $this->routePath, $this->requestPath]);
+        if (
+            in_array(strtoupper(end($requestPath)), array_merge($this->httpMethod, ['INDEX'])) ||
+            preg_match('/^(' . implode('|', $this->httpMethod) . ')/i', end($requestPath))
+        ) {
+            throw new \Exception('Route not found!', 404);
+        }
+
+        $basePath = implode(DIRECTORY_SEPARATOR, [basePath(), $this->appPath, $this->routePath, implode(DIRECTORY_SEPARATOR, $requestPath)]);
         $actionPath = implode('.', [$basePath, 'php']);
 
         if (!file_exists($actionPath)) {
@@ -77,7 +90,30 @@ class App extends Bridge
             }
 
             if (!file_exists($actionPath)) {
-                throw new \Exception('Route not found!', 404);
+                if (!in_array('__' . strtoupper($this->requestMethod), $this->httpMethod)) {
+                    throw new \Exception('Route not found!', 404);
+                }
+
+                $actionHttpMethod = '__' . strtolower($this->requestMethod);
+                $matchActionPath = [
+                    "{$actionHttpMethod}_" . end($requestPath) . '.php',
+                    "{$actionHttpMethod}_index.php",
+                    "{$actionHttpMethod}.php"
+                ];
+
+                array_walk(
+                    $matchActionPath,
+                    function ($file, $index) use (&$matchActionPath, $basePath) {
+                        $matchActionPath[$index] = implode(DIRECTORY_SEPARATOR, [$index ? $basePath : dirname($basePath), $file]);
+                    }
+                );
+
+                $actionPath = array_filter($matchActionPath, 'file_exists');
+                $actionPath = reset($actionPath);
+
+                if ($actionPath === false) {
+                    throw new \Exception('Route not found!', 404);
+                }
             }
         }
 

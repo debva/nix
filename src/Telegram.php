@@ -37,7 +37,7 @@ class Telegram
         }
     }
 
-    public function inlineKeyboardButton($keyboard)
+    public function inlineKeyboard($keyboard)
     {
         return json_encode(["inline_keyboard" => [$keyboard]]);
     }
@@ -71,7 +71,7 @@ class Telegram
         }
 
         if ((time() - $authData['auth_date']) > $exp) {
-            throw new \Exception('Authentication data is no longer valid', 401);
+            throw new \Exception('Authentication telegram data is no longer valid', 401);
         }
 
         return $authData;
@@ -94,7 +94,7 @@ class Telegram
                 ]
             ]));
 
-            return json_decode($response);
+            return json_decode($response, true);
         } catch (\Exception $e) {
             throw new \Exception($e->getMessage(), 500);
         }

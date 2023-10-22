@@ -6,6 +6,8 @@ class Route
 {
     public $requestPath;
 
+    public $requestMethod;
+
     protected $prefixPath;
 
     public function __construct()
@@ -19,6 +21,8 @@ class Route
             $this->prefixPath = env('APP_PATH', '') ? trim(env('APP_PATH', ''), '/') : '';
             $this->requestPath = trim(str_replace($this->prefixPath, '', $requestPath), '/');
         }
+
+        $this->requestMethod = isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : false;
     }
 
     public function __invoke($route = null, $query = [])

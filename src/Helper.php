@@ -41,6 +41,31 @@ if (!function_exists('nix')) {
     }
 }
 
+if (!function_exists('service')) {
+    function service()
+    {
+        $services = [];
+        $servicePath = implode(DIRECTORY_SEPARATOR, [basePath(), 'app', 'services']);
+
+        if (is_dir($servicePath)) {
+            $services = array_filter(glob(implode(DIRECTORY_SEPARATOR, [$servicePath, '*.php'])), 'file_exists');
+        }
+
+        $class = nix('anonymous');
+
+        foreach ($services as $service) {
+            $serviceClass = basename($service, '.php');
+            $name = strtolower(preg_replace('/([a-z])([A-Z])|-/', '$1_$2', $serviceClass));
+            $class->macro($name, function ($self, ...$args) use ($service, $serviceClass) {
+                require_once($service);
+                return new $serviceClass(...$args);
+            });
+        }
+
+        return $class;
+    }
+}
+
 if (!function_exists('auth')) {
     function auth()
     {

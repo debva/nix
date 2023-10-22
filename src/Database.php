@@ -86,7 +86,13 @@ class Database
         $this->beginTransaction();
         try {
             if (is_array($query)) {
-                foreach ($query as $bindings => $sql) {
+                foreach ($query as $sql) {
+                    $bindings = [];
+                    if (is_array($sql)) {
+                        $bindings = count($sql) === 2 ? end($sql) : [];
+                        $sql = reset($sql);
+                    }
+
                     $statement = $this->database->prepare($sql);
                     $statement->execute(is_array($bindings) ? $bindings : null);
                 }

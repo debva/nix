@@ -25,7 +25,7 @@ class Datatable
         $this->loadtime = microtime(true);
 
         $request = request('datatable');
-        $request = array_merge(['page' => 1, 'limit' => 10], is_null($request) ? [] : $request);
+        $request = array_merge(['page' => 1, 'limit' => 10], (is_null($request) || !is_array($request)) ? [] : $request);
         $request['search'] = isset($request['search']) ? $request['search'] : [];
         $request['filter'] = isset($request['filter']) ? $request['filter'] : [];
         $request['sort'] = isset($request['sort']) ? $request['sort'] : [];
@@ -44,10 +44,9 @@ class Datatable
             if (!empty($request['search']) && is_array($request['search'])) {
                 $searchQuery = [];
                 foreach ($request['search'] as $column => $value) {
-                    $sanitizeColumn = preg_replace('/[\s-]+/', '_', $column);
-                    $binding = strtoupper("_NIX_DT_SEARCH_{$sanitizeColumn}");
+                    $binding = strtoupper("_NIX_DT_SEARCH_{$this->sanitizeColumn($column)}");
                     $bindings = array_merge($bindings, [$binding => "%{$value}%"]);
-                    $searchQuery[] = "tbl.{$column} {$whereClause} :{$binding}";
+                    $searchQuery[] = "tbl.{$this->sanitizeColumn($column)} {$whereClause} :{$binding}";
                 }
                 $searchQuery = implode(' OR ', $searchQuery);
                 $searchQuery = "({$searchQuery})";
@@ -57,10 +56,9 @@ class Datatable
             if (!empty($request['filter']) && is_array($request['filter'])) {
                 $filterQuery = [];
                 foreach ($request['filter'] as $column => $value) {
-                    $sanitizeColumn = preg_replace('/[\s\-.]+/', '_', $column);
-                    $binding = strtoupper("_NIX_DT_FILTER_{$sanitizeColumn}");
+                    $binding = strtoupper("_NIX_DT_FILTER_{$this->sanitizeColumn($column)}");
                     $bindings = array_merge($bindings, [$binding => "%{$value}%"]);
-                    $filterQuery[] = "tbl.{$column} {$whereClause} :{$binding}";
+                    $filterQuery[] = "tbl.{$this->sanitizeColumn($column)} {$whereClause} :{$binding}";
                 }
                 $filterQuery = implode(' AND ', $filterQuery);
                 $filterQuery = "({$filterQuery})";
@@ -204,5 +202,10 @@ class Datatable
         ], (!empty($this->columns) ? ['columns' => $this->columns] : []));
 
         return response($data, $code, $gzip, $sanitize, $except_sanitize);
+    }
+
+    protected function sanitizeColumn($column)
+    {
+        return preg_replace('/[\s\-.]+/', '_', $column);
     }
 }

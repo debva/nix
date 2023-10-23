@@ -278,4 +278,12 @@ class Authentication extends Authorization
 
         return json_decode(base64_decode($payload), true);
     }
+
+    public function revoke($token = null)
+    {
+    }
+
+    public function user()
+    {
+    }
 }

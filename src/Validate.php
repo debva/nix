@@ -141,7 +141,14 @@ class Validate
     public function ruleString($value)
     {
         if (!(is_string($value) && !is_numeric($value))) {
-            return 'The :attribute field must be a string.';
+            return 'The :attribute field must be a string';
+        }
+    }
+
+    public function ruleArray($value)
+    {
+        if (!is_array($value)) {
+            return 'The :attribute field must be an array';
         }
     }
 

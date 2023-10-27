@@ -71,8 +71,8 @@ class Database
             'connection'    => strtolower($this->connection),
             'whereClause'   => $this->whereClause,
             'database'      => $this->database,
-            'query'         => preg_replace('/\s+/', ' ', $query),
-            'bindings'      => $bindings
+            'query'         => $this->sanitize($query),
+            'bindings'      => $this->parseBindings($bindings)
         ] as $method => $value) {
             $class->macro($method, function () use ($value) {
                 return $value;
@@ -93,16 +93,16 @@ class Database
                         $sql = reset($sql);
                     }
 
-                    $statement = $this->database->prepare($sql);
-                    $statement->execute(is_array($bindings) ? $bindings : null);
+                    $statement = $this->database->prepare($this->sanitize($sql));
+                    $statement->execute($this->parseBindings($bindings));
                 }
 
                 $this->commit();
                 return true;
             }
 
-            $statement = $this->database->prepare($query);
-            $statement->execute($bindings);
+            $statement = $this->database->prepare($this->sanitize($query));
+            $statement->execute($this->parseBindings($bindings));
 
             $this->commit();
             return $statement;
@@ -110,6 +110,17 @@ class Database
             $this->rollBack();
             throw new \PDOException($e->getMessage(), 500);
         }
+    }
+
+    public function parseBindings($bindings)
+    {
+        if (!is_array($bindings)) return null;
+        return $bindings;
+    }
+
+    public function sanitize($sql)
+    {
+        return trim(preg_replace('/[\n\t]+|\s+/', ' ', $sql));
     }
 
     public function transaction(\Closure $transaction)

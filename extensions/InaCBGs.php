@@ -85,7 +85,7 @@ class InaCBGs
         $this->key = $key;
     }
 
-    public function __invoke($payload)
+    public function __invoke($payload, $withErrorCheck = false)
     {
         $payload = $this->encrypt($payload);
 
@@ -99,16 +99,21 @@ class InaCBGs
 
         $error = (is_array($response) && isset($response['metadata']['error_no'])) ? $response['metadata']['error_no'] : false;
 
-        if (is_string($error) && in_array($error, array_keys($this->errors))) {
-            return [
-                'error' => [
-                    'code'      => $error,
-                    'message'   => $this->errors[$error]
-                ]
-            ];
+        if ($withErrorCheck && is_string($error) && in_array($error, array_keys($this->errors))) {
+            throw new \Exception($this->errors[$error], 400);
         }
 
         return $response;
+    }
+
+    public function throwError($errorCode)
+    {
+        if (is_null($errorCode) || !is_string($errorCode) || (is_string($errorCode) && empty(trim($errorCode)))) {
+            return true;
+        }
+
+        $message = isset($this->errors[$errorCode]) ? $this->errors[$errorCode] : "Unknown error code: {$errorCode}";
+        throw new \Exception($message, 400);
     }
 
     protected function encrypt($data)

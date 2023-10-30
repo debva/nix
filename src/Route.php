@@ -30,6 +30,6 @@ class Route
         $host = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'];
         $route = $route ? trim($route, '\/') : $this->requestPath;
         $query = !empty($query) ? (strpos($route, '?') !== false ? '&' : '?') . http_build_query($query) : '';
-        return trim(join('/', [$host, $this->prefixPath, $route . $query]), '\/');
+        return trim(join('/', array_filter([$host, $this->prefixPath, $route . $query])), '\/');
     }
 }

@@ -32,7 +32,8 @@ class App extends Bridge
 
         register_shutdown_function(function () {
             $error = error_get_last();
-            if ($error !== null) {
+
+            if ($error !== null && env('APP_DEBUG')) {
                 $this->handleError('Fatal Error', $error['message'], 500, $error['file'], $error['line']);
             }
         });

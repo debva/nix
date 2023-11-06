@@ -17,6 +17,7 @@ class Nix
             'crypt'     => Cryptography::class,
             'db'        => Database::class,
             'datatable' => Datatable::class,
+            'document'  => Document::class,
             'ext'       => Extension::class,
             'http'      => Http::class,
             'task'      => Task::class,
@@ -34,7 +35,7 @@ class Nix
             throw new \Exception("Class {$class} not found!");
         }
 
-        if (in_array($class, ['auth', 'crypt', 'ext', 'http', 'task', 'request', 'response', 'route', 'storage'])) {
+        if (in_array($class, ['auth', 'crypt', 'document', 'ext', 'http', 'task', 'request', 'response', 'route', 'storage'])) {
             return isset($this->cacheClass[$class])
                 ? $this->cacheClass[$class]
                 : $this->cacheClass[$class] = new $classes[$class](...$args);

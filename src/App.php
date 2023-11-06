@@ -20,6 +20,8 @@ class App extends Bridge
 
     public function __construct()
     {
+        error_reporting(0);
+
         ini_set('display_errors', 'Off');
 
         set_exception_handler(function ($e) {
@@ -154,9 +156,9 @@ class App extends Bridge
             ], $code, true);
         } else {
             response([
-                'code'      => 500,
+                'code'      => $code,
                 'message'   => $message
-            ], 500, true);
+            ], $code, true);
         }
 
         exit;

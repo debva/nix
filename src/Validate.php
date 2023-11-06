@@ -165,4 +165,62 @@ class Validate
             return 'The :attribute field must not exist in ' . implode(', ', $params);
         }
     }
+
+    public function ruleUnique($value, ...$params)
+    {
+        $params = array_replace([null, 'id', null], $params);
+        list($table, $column, $conditions) = $params;
+
+        $table = array_replace([null, null], array_reverse(array_filter(explode('.', $table))));
+        list($table, $connection) = $table;
+
+        $column = array_replace([null, null], array_filter(explode('=', $column)));
+        list($column, $ignore) = $column;
+
+        if (preg_match('/(\w+)\s*([=<>!]+)\s*(\w+)/', $conditions, $matches)) {
+            $conditions = [trim($matches[1]), trim($matches[2]), trim($matches[3])];
+        } else {
+            $conditions = [];
+        }
+
+        if (!empty($conditions) && (count($conditions) < 3 || count($conditions) > 3)) {
+            throw new \Exception('Unique condition must have a column, operator, and value!');
+        }
+
+        if (substr($ignore, 0, 1) === '{' && substr($ignore, -1) === '}') {
+            $ignore = request(trim($ignore, '{}'));
+        }
+
+        $bindings = ['column' => $value];
+
+        if (!is_null($ignore)) {
+            $bindings = array_merge($bindings, ['ignore' => $ignore]);
+            $ignore = "{$column} != :ignore";
+        }
+
+        if (!empty($conditions)) {
+            $bindings = array_merge($bindings, ['condition' => end($conditions)]);
+            array_splice($conditions, 2, 1, ':condition');
+        }
+
+        $conditions = implode(' AND ', array_filter(["{$column} = :column", $ignore, trim(implode(' ', $conditions))]));
+        $where = "WHERE {$conditions}";
+
+        $exists = query(
+            "SELECT {$column} FROM {$table} {$where} LIMIT 1",
+            $bindings,
+            $connection
+        )->fetchColumn();
+
+        if ($exists) {
+            return 'The :attribute has already been taken';
+        }
+    }
+
+    public function ruleFile($value)
+    {
+        if (!empty(array_diff(array_keys($value), ['name', 'type', 'tmp_name', 'error', 'size']))) {
+            return 'The :attribute field must be a file';
+        }
+    }
 }

@@ -30,7 +30,7 @@ class Authentication extends Authorization
         switch ($name) {
             case 'token':
                 $headers = getallheaders();
-                return isset($headers['Authorization']) ? $headers['Authorization'] : null;
+                return isset($headers['Authorization']) ? urldecode($headers['Authorization']) : null;
 
             case 'user':
                 return;
@@ -283,7 +283,26 @@ class Authentication extends Authorization
     {
     }
 
-    public function user()
+    public function purge()
     {
+        $table = env('AUTH_TOKEN_TABLE', 'tokens:parent_id,user_id,token,expires_at');
+        $table = array_filter(explode(':', $table));
+
+        if (count($table) < 2) {
+            throw new \Exception('Auth token table not valid!', 500);
+        }
+
+        list($table, $fields) = $table;
+        $fields = array_filter(explode(',', $fields));
+
+        if (count($fields) < 3) {
+            throw new \Exception('Auth token table not valid!', 500);
+        }
+
+        $exp = end($fields);
+
+        query("DELETE FROM {$table} WHERE {$exp} < NOW()");
+
+        return true;
     }
 }

@@ -99,8 +99,8 @@ class InaCBGs
 
         $error = (is_array($response) && isset($response['metadata']['error_no'])) ? $response['metadata']['error_no'] : false;
 
-        if ($withErrorCheck && is_string($error) && in_array($error, array_keys($this->errors))) {
-            throw new \Exception($this->errors[$error], 400);
+        if (is_object($response) || ($withErrorCheck && is_string($error) && in_array($error, array_keys($this->errors)))) {
+            throw new \Exception($error ? $this->errors[$error] : 'Unable to connect to InaCBGs server!', 500);
         }
 
         return $response;

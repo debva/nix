@@ -20,6 +20,8 @@
     "minimum-stability": "stable",
     "prefer-stable": true,
     "require": {
-        "nullpunkt/lz-string-php": "^1.0"
+        "nullpunkt/lz-string-php": "^1.0",
+        "setasign/fpdf": "^1.8",
+        "setasign/fpdi": "^2.5"
     }
 }

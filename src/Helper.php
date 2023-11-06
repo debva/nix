@@ -222,6 +222,13 @@ if (!function_exists('validate')) {
     }
 }
 
+if (!function_exists('document')) {
+    function document()
+    {
+        return nix('document');
+    }
+}
+
 if (!function_exists('startsWith')) {
     function startsWith($haystack, $needle, $caseInsensitive = false)
     {

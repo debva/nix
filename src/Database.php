@@ -10,6 +10,22 @@ class Database
 
     protected $whereClause;
 
+    protected $primaryKey = 'id';
+
+    protected $query;
+
+    protected $bindings;
+
+    protected $statement;
+
+    protected $transactionLevel = 0;
+
+    protected $transactionLevelUsed = 0;
+
+    protected $transactionCompleted = false;
+
+    protected $withTransaction = true;
+
     public function __construct($connection = null)
     {
         if ($connection) $connection = "_" . strtoupper($connection);
@@ -44,87 +60,441 @@ class Database
         }
     }
 
+    protected function sanitizeQuery($query)
+    {
+        return trim(preg_replace('/[\n\t]+|\s+/', ' ', $query));
+    }
+
+    protected function sanitizeBindings($bindings)
+    {
+        if (!is_array($bindings)) return [$bindings];
+        return $bindings;
+    }
+
+    protected function buildConditions(array $values)
+    {
+        if (empty($values)) return [
+            'query'     => null,
+            'bindings'  => []
+        ];
+
+        array_walk($values, function ($value) use (&$operators, &$conditions) {
+            $operator = isset($value['operator']) ? $value['operator'] : 'AND';
+            $condition = $value['condition'];
+
+            if (count($condition) < 3) {
+                throw new \Exception('Condition must have 3 parameters!');
+            }
+
+            $operators[] = strtoupper($operator);
+            $conditions[] = $condition;
+        });
+
+        $bindings = [];
+        $query = array_map(function ($operator, $condition) use (&$bindings) {
+            if (count($condition) !== count($condition, COUNT_RECURSIVE)) {
+                $result = $this->buildConditions($condition);
+                $query = $result['query'];
+                $bindings = array_merge($bindings, $result['bindings']);
+                return "{$operator} ({$query})";
+            }
+
+            $bindings[] = $condition[2];
+            $condition[count($condition) - 1] = '?';
+            $condition = implode(' ', $condition);
+            return "{$operator} {$condition}";
+        }, $operators, $conditions);
+
+        return [
+            'query'     => $this->sanitizeQuery(trim(implode(' ', $query), 'ANDOR ')),
+            'bindings'  => $this->sanitizeBindings($bindings)
+        ];
+    }
+
+    protected function buildFields(array $fields, $update = null)
+    {
+        if (is_null($update)) {
+            return implode(', ', array_keys($fields));
+        }
+
+        if ($update) {
+            return implode(', ', array_map(function ($field) {
+                return "{$field} = ?";
+            }, array_keys($fields)));
+        }
+
+        return implode(', ', array_map(function ($field) {
+            return "? AS {$field}";
+        }, array_keys($fields)));
+    }
+
+    protected function buildPlaceholder(array $fields)
+    {
+        return implode(', ', array_fill(0, count($fields), '?'));
+    }
+
+    public function withoutTransaction()
+    {
+        $this->withTransaction = false;
+        return $this;
+    }
+
     public function getConnection()
     {
         return $this->database;
     }
 
+    public function getKeyName()
+    {
+        return $this->primaryKey;
+    }
+
+    public function setKeyName($key)
+    {
+        $this->primaryKey = $key;
+        return $this;
+    }
+
+    public function getTransactionLevel()
+    {
+        return $this->transactionLevel;
+    }
+
     public function beginTransaction()
     {
-        return $this->database->beginTransaction();
+        $this->transactionLevel++;
+        $this->transactionCompleted = false;
+
+        if (!$this->getConnection()->inTransaction()) {
+            $this->transactionLevelUsed = $this->getTransactionLevel();
+            return $this->getConnection()->beginTransaction();
+        }
+
+        return null;
     }
 
     public function commit()
     {
-        return $this->database->commit();
+        $this->transactionLevelUsed = 0;
+        $this->transactionCompleted = true;
+        return $this->getConnection()->commit();
     }
 
     public function rollBack()
     {
-        return $this->database->rollBack();
+        $this->transactionLevelUsed = 0;
+        $this->transactionCompleted = true;
+        return $this->getConnection()->rollBack();
     }
 
-    public function raw($query, $bindings = [])
+    public function toRawSql($query = null, $bindings = null)
     {
-        $class = new Anonymous;
-        foreach ([
-            'connection'    => strtolower($this->connection),
-            'whereClause'   => $this->whereClause,
-            'database'      => $this->database,
-            'query'         => $this->sanitize($query),
-            'bindings'      => $this->parseBindings($bindings)
-        ] as $method => $value) {
-            $class->macro($method, function () use ($value) {
-                return $value;
-            });
+        $query = is_null($query) ? $this->query : $query;
+        $bindings = is_null($bindings) ? $this->bindings : $bindings;
+
+        if (is_array($query)) {
+            return array_map(function ($q, $b) {
+                return $this->toRawSql($q, $b);
+            }, $query, $bindings);
         }
-        return $class;
+
+        $withKeyBinding = count(array_filter(array_keys($bindings), 'is_string')) > 0;
+        $sql = str_replace(array_merge(['?'], $withKeyBinding ? array_map(function ($binding) {
+            return substr($binding, 0, 1) === ':' ? $binding : ":{$binding}";
+        }, array_keys($bindings)) : []), "'%s'", $query);
+        return vsprintf($sql, $bindings);
     }
 
-    public function query($query, $bindings = [])
+    public function fetchColumn()
     {
-        $this->beginTransaction();
         try {
-            if (is_array($query)) {
-                foreach ($query as $sql) {
-                    $bindings = [];
-                    if (is_array($sql)) {
-                        $bindings = count($sql) === 2 ? end($sql) : [];
-                        $sql = reset($sql);
-                    }
-
-                    $statement = $this->database->prepare($this->sanitize($sql));
-                    $statement->execute($this->parseBindings($bindings));
-                }
-
-                $this->commit();
-                return true;
+            if (is_array($this->statement)) {
+                if (empty($this->statement)) return [];
+                return array_map(function ($statement, $bindings) {
+                    $statement->execute($bindings);
+                    return $statement->fetchColumn();
+                }, $this->statement, $this->bindings);
             }
 
-            $statement = $this->database->prepare($this->sanitize($query));
-            $statement->execute($this->parseBindings($bindings));
+            if (empty($this->statement)) return null;
+            $this->statement->execute($this->bindings);
+            return $this->statement->fetchColumn();
+        } catch (\Exception $e) {
+            throw new \Exception($e->getMessage(), 500);
+        }
+    }
 
-            $this->commit();
-            return $statement;
+    public function fetch()
+    {
+        try {
+            if (is_array($this->statement)) {
+                if (empty($this->statement)) return [];
+                return array_map(function ($statement, $bindings) {
+                    $statement->execute($bindings);
+                    return $statement->fetch();
+                }, $this->statement, $this->bindings);
+            }
+
+            if (empty($this->statement)) return null;
+            $this->statement->execute($this->bindings);
+            return $this->statement->fetch();
         } catch (\PDOException $e) {
-            $this->rollBack();
             throw new \PDOException($e->getMessage(), 500);
         }
     }
 
-    public function parseBindings($bindings)
+    public function get()
     {
-        if (!is_array($bindings)) return null;
-        return $bindings;
+        try {
+            if (is_array($this->statement)) {
+                if (empty($this->statement)) return [];
+                return array_map(function ($statement, $bindings) {
+                    $statement->execute($bindings);
+                    return $statement->fetchAll();
+                }, $this->statement, $this->bindings);
+            }
+
+            if (empty($this->statement)) return null;
+            $this->statement->execute($this->bindings);
+            return $this->statement->fetchAll();
+        } catch (\Exception $e) {
+            throw new \Exception($e->getMessage(), 500);
+        }
     }
 
-    public function sanitize($sql)
+    public function execute()
     {
-        return trim(preg_replace('/[\n\t]+|\s+/', ' ', $sql));
+        if (is_array($this->statement)) {
+            return array_map(function ($statement, $bindings) {
+                return $statement->execute($bindings);
+            }, $this->statement, $this->bindings);
+        }
+
+        return $this->statement->execute($this->bindings);
     }
 
-    public function transaction(\Closure $transaction)
+    public function query($query, array $bindings = [])
     {
-        return $transaction($this);
+        if (is_array($query)) {
+            if (empty($query)) {
+                $this->query = $this->bindings = $this->statement = [];
+            }
+            foreach ($query as $q) {
+                if (isset($q['query'])) {
+                    $q['bindings'] = isset($q['bindings']) ? $q['bindings'] : [];
+                    $this->statement[] = $this->getConnection()->prepare($this->sanitizeQuery($q['query']));;
+                    $this->query[] = $this->sanitizeQuery($q['query']);
+                    $this->bindings[] = $this->sanitizeBindings(empty($q['bindings']) ? [] : $q['bindings']);
+                }
+            }
+        } else {
+            if (empty($query)) {
+                $this->query = $this->bindings = $this->statement = null;
+            }
+            $this->statement = $this->getConnection()->prepare($this->sanitizeQuery($query));;
+            $this->query = $this->sanitizeQuery($query);
+            $this->bindings = $this->sanitizeBindings(empty($bindings) ? [] : $bindings);
+        }
+        return $this;
+    }
+
+    public function create($table, array $values)
+    {
+        if ($this->withTransaction) $this->beginTransaction();
+
+        try {
+            $result = [];
+            if (count($values) != count($values, COUNT_RECURSIVE)) {
+                $queries = array_map(function ($values) use ($table) {
+                    $fields = $this->buildFields($values);
+                    $placeholder = $this->buildPlaceholder($values);
+                    return [
+                        'query'     => $this->sanitizeQuery("INSERT INTO {$table} ({$fields}) VALUES ({$placeholder})"),
+                        'bindings'  => $this->sanitizeBindings(array_values($values))
+                    ];
+                }, $values);
+
+                if (!empty($queries)) {
+                    $this->query($queries);
+                    array_map(function ($values, $statement, $bindings) use (&$result) {
+                        $statement->execute($bindings);
+                        $lastInsertId = $this->getConnection()->lastInsertId($this->getKeyName());
+                        $result[] = $lastInsertId === 0 ? $values : array_merge([$this->getKeyName() => $lastInsertId], $values);
+                    }, $values, $this->statement, $this->bindings);
+                }
+            } else {
+                $fields = $this->buildFields($values);
+                $placeholder = $this->buildPlaceholder($values);
+
+                $this->query(
+                    $this->sanitizeQuery("INSERT INTO {$table} ({$fields}) VALUES ({$placeholder})"),
+                    $this->sanitizeBindings(array_values($values))
+                )->execute();
+
+                $lastInsertId = $this->getConnection()->lastInsertId($this->getKeyName());
+                $result = $lastInsertId === 0 ? $values : array_merge([$this->getKeyName() => $lastInsertId], $values);
+            }
+
+            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->commit();
+            return $result;
+        } catch (\Exception $e) {
+            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->rollBack();
+            throw new \Exception($e->getMessage(), 500);
+        }
+    }
+
+    public function update($table, array $values, array $conditions)
+    {
+        if ($this->withTransaction) $this->beginTransaction();
+
+        try {
+            $result = [];
+
+            if (count($values) !== count($conditions)) {
+                throw new \Exception("Invalid number of where for update statement!");
+            }
+
+            if (count($values) != count($values, COUNT_RECURSIVE)) {
+                $queries = array_map(function ($values, $conditions) use ($table) {
+                    $fields = $this->buildFields($values, true);
+                    $builder = $this->buildConditions($conditions);
+
+                    return [
+                        'query'     => $this->sanitizeQuery("UPDATE {$table} SET {$fields} WHERE {$builder['query']}"),
+                        'bindings'  => $this->sanitizeBindings(array_merge(array_values($values), $builder['bindings']))
+                    ];
+                }, $values, $conditions);
+
+                if (!empty($queries)) {
+                    $this->query($queries)->execute();
+                    foreach ($values as $value) $result[] = $value;
+                }
+            } else {
+                $fields = $this->buildFields($values, true);
+                $builder = $this->buildConditions($conditions);
+
+                $this->query(
+                    $this->sanitizeQuery("UPDATE {$table} SET {$fields} WHERE {$builder['query']}"),
+                    $this->sanitizeBindings(array_merge(array_values($values), $builder['bindings']))
+                )->execute();
+
+                $result = $values;
+            }
+
+            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->commit();
+            return $result;
+        } catch (\Exception $e) {
+            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->rollBack();
+            throw new \Exception($e->getMessage(), 500);
+        }
+    }
+
+    public function delete($table, array $conditions = [])
+    {
+        if ($this->withTransaction) $this->beginTransaction();
+
+        try {
+            $builder = $this->buildConditions($conditions);
+            $query = is_null($builder['query']) ? '' : "WHERE {$builder['query']}";
+            $this->query("DELETE FROM {$table} {$query}", $builder['bindings'])->execute();
+
+            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->commit();
+            return true;
+        } catch (\Exception $e) {
+            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->rollBack();
+            throw new \Exception($e->getMessage(), 500);
+        }
+    }
+
+    public function upsert($table, array $values, $uniqueBy = [], $update = false)
+    {
+        if ($this->withTransaction) $this->beginTransaction();
+
+        try {
+            $result = [];
+            $uniqueBy = is_array($uniqueBy) ? $uniqueBy : [$uniqueBy];
+
+            if (count($values) != count($values, COUNT_RECURSIVE)) {
+                $queries = array_map(function ($values) use ($table, $uniqueBy, $update) {
+                    $uniqueBy = array_intersect_key($values, array_flip($uniqueBy));
+                    $conditions = array_map(function ($field, $value) {
+                        return ['condition' => [$field, '=', $value]];
+                    }, array_keys($uniqueBy), array_values($uniqueBy));
+
+                    $builder = $this->buildConditions($conditions);
+                    $bindings = array_merge(array_values($values), $builder['bindings']);
+
+                    $fieldsInsert = $this->buildFields($values);
+                    $fieldsAlias = $this->buildFields($values, false);
+                    $fieldsUpdate = $this->buildFields($values, true);
+                    $fieldsSelect = $this->buildFields($uniqueBy);
+
+                    return array_merge([
+                        [
+                            'query'     => "INSERT INTO {$table} ({$fieldsInsert}) SELECT * FROM (SELECT {$fieldsAlias}) AS temp WHERE NOT EXISTS (SELECT {$fieldsSelect} FROM {$table} WHERE {$builder['query']})",
+                            'bindings'  => $bindings,
+                        ],
+                        $update ? [
+                            'query'     => "UPDATE {$table} SET {$fieldsUpdate} WHERE {$builder['query']}",
+                            'bindings'  => $bindings,
+                        ] : []
+                    ]);
+                }, $values);
+
+                $queries = array_values(array_filter(array_merge(...$queries)));
+
+                if (!empty($queries)) {
+                    $this->query($queries)->execute();
+                    foreach ($values as $value) $result[] = $value;
+                }
+            } else {
+                $uniqueBy = array_intersect_key($values, array_flip($uniqueBy));
+                $conditions = array_map(function ($field, $value) {
+                    return ['condition' => [$field, '=', $value]];
+                }, array_keys($uniqueBy), array_values($uniqueBy));
+
+                $builder = $this->buildConditions($conditions);
+                $bindings = array_merge(array_values($values), $builder['bindings']);
+
+                $fieldsInsert = $this->buildFields($values);
+                $fieldsAlias = $this->buildFields($values, false);
+                $fieldsUpdate = $this->buildFields($values, true);
+                $fieldsSelect = $this->buildFields($uniqueBy);
+
+                $this->query(array_merge([
+                    [
+                        'query'     => "INSERT INTO {$table} ({$fieldsInsert}) SELECT * FROM (SELECT {$fieldsAlias}) AS temp WHERE NOT EXISTS (SELECT {$fieldsSelect} FROM {$table} WHERE {$builder['query']})",
+                        'bindings'  => $bindings,
+                    ],
+                    $update ? [
+                        'query'     => "UPDATE {$table} SET {$fieldsUpdate} WHERE {$builder['query']}",
+                        'bindings'  => $bindings,
+                    ] : []
+                ]))->execute();
+
+                $result = $values;
+            }
+
+            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->commit();
+            return $result;
+        } catch (\Exception $e) {
+            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->rollBack();
+            throw new \Exception($e->getMessage(), 500);
+        }
+    }
+
+    public function sync($relationTable, $primaryKey, $foreignKey, array $valuesPrimary, array $valuesForiegn, array $optionalFields = [])
+    {
+        if ($this->withTransaction) $this->beginTransaction();
+
+        try {
+            $result = [];
+
+            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->commit();
+            return $result;
+        } catch (\Exception $e) {
+            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->rollBack();
+            throw new \Exception($e->getMessage(), 500);
+        }
     }
 }

@@ -223,4 +223,25 @@ class Validate
             return 'The :attribute field must be a file';
         }
     }
+
+    public function ruleMimes($value)
+    {
+        if (true) {
+            return 'The :attribute field must be a file of type: ' . implode(', ', $params);
+        }
+    }
+
+    public function ruleMin($value)
+    {
+        if (true) {
+            return 'The :attribute field must have at least ' . implode(', ', $params);
+        }
+    }
+
+    public function ruleMax($value)
+    {
+        if (true) {
+            return 'The :attribute field must not be greater than ' . implode(', ', $params);
+        }
+    }
 }

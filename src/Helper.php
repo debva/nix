@@ -142,20 +142,6 @@ if (!function_exists('db')) {
     }
 }
 
-if (!function_exists('query')) {
-    function query($query, $bindings = [], $connection = null)
-    {
-        return db($connection)->query($query, $bindings);
-    }
-}
-
-if (!function_exists('transaction')) {
-    function transaction(\Closure $transaction, $connection = null)
-    {
-        return db($connection)->transaction($transaction);
-    }
-}
-
 if (!function_exists('telegram')) {
     function telegram($token = null)
     {

@@ -18,11 +18,11 @@ class BPJS
     {
         $this->defineService($isProduction);
 
-        extract($options, EXTR_PREFIX_ALL, 'opts');
+        extract($options);
 
-        $this->consId = $opts_consid;
-        $this->secretKey = $opts_secretkey;
-        $this->userKey = $opts_userkey;
+        $this->consId = $consid;
+        $this->secretKey = $secretkey;
+        $this->userKey = $userkey;
     }
 
     public function __invoke($service, $body = [], $method = null)

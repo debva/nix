@@ -29,11 +29,11 @@ class BPJS
     {
         $service = trim($service, '\/');
         $signature = $this->createSignature();
-        
+
         if (!is_null($method) && !in_array($method, [EXT_BPJS_METHOD_CREATE, EXT_BPJS_METHOD_UPDATE, EXT_BPJS_METHOD_DELETE])) {
             throw new \Exception("HTTP method {$method} is not supported!");
         }
-        
+
         $method = empty($body) ? 'get' : (is_null($method) ? EXT_BPJS_METHOD_CREATE : $method);
         $response = http()->{$method}("{$this->baseurl}/{$service}", [
             "user_key: {$this->userKey}",
@@ -49,6 +49,10 @@ class BPJS
 
         if ($response && array_key_exists('response', $response)) {
             $response = array_merge($response, ['response' => $this->decrypt($response['response'])]);
+        }
+
+        if (empty($response)) {
+            throw new \Exception('Unable to connect to BPJS server!', 500);
         }
 
         return $response;

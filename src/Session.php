@@ -1,6 +1,6 @@
 <?php
 
-namespace Debva\Nix\Backup;
+namespace Debva\Nix;
 
 class Session
 {

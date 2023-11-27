@@ -25,12 +25,17 @@ class BPJS
         $this->userKey = $opts_userkey;
     }
 
-    public function __invoke($service, $body = [])
+    public function __invoke($service, $body = [], $method = null)
     {
         $service = trim($service, '\/');
         $signature = $this->createSignature();
+        $method = empty($body) ? 'get' : (is_null($method) ? EXT_BPJS_METHOD_CREATE : $method);
 
-        $response = http()->{empty($body) ? 'get' : 'post'}("{$this->baseurl}/{$service}", [
+        if (!is_null($method) && !in_array($method, [EXT_BPJS_METHOD_CREATE, EXT_BPJS_METHOD_UPDATE, EXT_BPJS_METHOD_DELETE])) {
+            throw new \Exception("HTTP method {$method} is not supported!");
+        }
+
+        $response = http()->{$method}("{$this->baseurl}/{$service}", [
             "user_key: {$this->userKey}",
             "X-cons-id: {$signature['x-cons-id']}",
             "X-timestamp: {$signature['x-timestamp']}",
@@ -40,7 +45,9 @@ class BPJS
                 : 'Content-Type: Application/x-www-form-urlencoded')
         ], $body);
 
-        if (array_key_exists('response', $response)) {
+        $response = is_string($response) ? json_decode($response, true) : $response;
+
+        if ($response && array_key_exists('response', $response)) {
             $response = array_merge($response, ['response' => $this->decrypt($response['response'])]);
         }
 
@@ -49,6 +56,15 @@ class BPJS
 
     protected function defineService($isProduction)
     {
+        if (!defined('EXT_BPJS_METHOD_CREATE')) {
+            define('EXT_BPJS_METHOD_CREATE', 'post');
+        }
+        if (!defined('EXT_BPJS_METHOD_UPDATE')) {
+            define('EXT_BPJS_METHOD_UPDATE', 'put');
+        }
+        if (!defined('EXT_BPJS_METHOD_DELETE')) {
+            define('EXT_BPJS_METHOD_DELETE', 'delete');
+        }
         if (!$isProduction) {
             if (!defined('EXT_BPJS_VCLAIM')) {
                 define('EXT_BPJS_VCLAIM', 'https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-rest-dev');

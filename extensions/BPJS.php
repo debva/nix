@@ -29,12 +29,12 @@ class BPJS
     {
         $service = trim($service, '\/');
         $signature = $this->createSignature();
-        $method = empty($body) ? 'get' : (is_null($method) ? EXT_BPJS_METHOD_CREATE : $method);
-
+        
         if (!is_null($method) && !in_array($method, [EXT_BPJS_METHOD_CREATE, EXT_BPJS_METHOD_UPDATE, EXT_BPJS_METHOD_DELETE])) {
             throw new \Exception("HTTP method {$method} is not supported!");
         }
-
+        
+        $method = empty($body) ? 'get' : (is_null($method) ? EXT_BPJS_METHOD_CREATE : $method);
         $response = http()->{$method}("{$this->baseurl}/{$service}", [
             "user_key: {$this->userKey}",
             "X-cons-id: {$signature['x-cons-id']}",

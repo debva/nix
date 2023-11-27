@@ -214,7 +214,7 @@ class Validate
         $exists = db($connection)->query(
             "SELECT {$column} FROM {$table} {$where} LIMIT 1",
             $bindings
-        )->fetchColumn();
+        )->column();
 
         if ($exists) {
             return 'The :attribute has already been taken';

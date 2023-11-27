@@ -23,7 +23,6 @@ class BPJS
         $this->consId = $opts_consid;
         $this->secretKey = $opts_secretkey;
         $this->userKey = $opts_userkey;
-        $this->baseurl = $opts_baseurl;
     }
 
     public function __invoke($service, $body = [])
@@ -114,7 +113,13 @@ class BPJS
             OPENSSL_RAW_DATA,
             substr(hex2bin(hash('sha256', $this->key)), 0, 16)
         );
-        
+
         return json_decode(\LZCompressor\LZString::decompressFromEncodedURIComponent($output), true);
+    }
+
+    public function setBaseURL($url)
+    {
+        $this->baseurl = $url;
+        return $this;
     }
 }

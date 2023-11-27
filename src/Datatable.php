@@ -20,6 +20,12 @@ class Datatable
 
     protected $editColumns = [];
 
+    protected $tableNameAlias = 'tbl';
+
+    protected $namingSearchBindings = '_NIX_DT_SEARCH_';
+
+    protected $namingFilterBindings = '_NIX_DT_FILTER_';
+
     public function __construct($data = [])
     {
         $this->loadtime = microtime(true);
@@ -34,19 +40,22 @@ class Datatable
         $this->page = (int) $request['page'];
         $this->offset = ($this->page - 1) * $this->limit;
 
-        if ($data instanceof Anonymous && $data->database() instanceof \PDO) {
+        if ($data instanceof Database) {
             $db = $data;
-
-            $bindings = $data->bindings();
-            $whereClause = $data->whereClause();
+            $query = $db->getQuery();
+            $whereClause = $db->getWhereClause();
+            $bindings = $originalBindings = $db->getBindings();
+            $isNamedBindingType = array_reduce(array_keys($bindings), function ($carry, $key) {
+                return $carry && is_string($key);
+            }, true);
 
             $searchQuery = null;
             if (!empty($request['search']) && is_array($request['search'])) {
                 $searchQuery = [];
                 foreach ($request['search'] as $column => $value) {
-                    $binding = strtoupper("_NIX_DT_SEARCH_{$this->sanitizeColumn($column)}");
-                    $bindings = array_merge($bindings, [$binding => "%{$value}%"]);
-                    $searchQuery[] = "tbl.{$this->sanitizeColumn($column)} {$whereClause} :{$binding}";
+                    $binding = strtoupper("{$this->namingSearchBindings}{$this->sanitizeColumn($column)}");
+                    $bindings = array_merge($bindings, $isNamedBindingType ? [$binding => "%{$value}%"] : ["%{$value}%"]);
+                    $searchQuery[] = "{$this->tableNameAlias}.{$this->sanitizeColumn($column)} {$whereClause} " . ($isNamedBindingType ? ":{$binding}" : '?');
                 }
                 $searchQuery = implode(' OR ', $searchQuery);
                 $searchQuery = "({$searchQuery})";
@@ -56,9 +65,9 @@ class Datatable
             if (!empty($request['filter']) && is_array($request['filter'])) {
                 $filterQuery = [];
                 foreach ($request['filter'] as $column => $value) {
-                    $binding = strtoupper("_NIX_DT_FILTER_{$this->sanitizeColumn($column)}");
-                    $bindings = array_merge($bindings, [$binding => "%{$value}%"]);
-                    $filterQuery[] = "tbl.{$this->sanitizeColumn($column)} {$whereClause} :{$binding}";
+                    $binding = strtoupper("{$this->namingFilterBindings}{$this->sanitizeColumn($column)}");
+                    $bindings = array_merge($bindings, $isNamedBindingType ? [$binding => "%{$value}%"] : ["%{$value}%"]);
+                    $filterQuery[] = "{$this->tableNameAlias}.{$this->sanitizeColumn($column)} {$whereClause} " . ($isNamedBindingType ? ":{$binding}" : '?');
                 }
                 $filterQuery = implode(' AND ', $filterQuery);
                 $filterQuery = "({$filterQuery})";
@@ -69,7 +78,7 @@ class Datatable
                 $orderQuery = [];
                 foreach ($request['sort'] as $column => $sort) {
                     if (in_array(strtoupper($sort), ['ASC', 'DESC'])) {
-                        $orderQuery[] = "tbl.{$column} " . strtoupper($sort);
+                        $orderQuery[] = "{$this->tableNameAlias}.{$column} " . strtoupper($sort);
                     }
                 }
 
@@ -87,20 +96,17 @@ class Datatable
                 $whereQuery = "WHERE {$whereQuery}";
             }
 
-            $data = $db->database()->prepare("SELECT COUNT(*) FROM ({$db->query()}) AS tbl");
-            $data->execute($db->bindings());
-            $this->total = (int) $data->fetchColumn();
+            $data = $db->query("SELECT COUNT(*) FROM ({$query}) AS {$this->tableNameAlias}", $originalBindings);
+            $this->total = (int) $data->column();
 
             if (!empty($whereQuery)) {
-                $data = $db->database()->prepare(trim("SELECT COUNT(*) FROM ({$db->query()}) AS tbl {$whereQuery}"));
-                $data->execute($bindings);
-                $this->totalFiltered = (int) $data->fetchColumn();
+                $data = $db->query(trim("SELECT COUNT(*) FROM ({$query}) AS {$this->tableNameAlias} {$whereQuery}"), $bindings);
+                $this->totalFiltered = (int) $data->column();
             }
 
-            $query = trim("({$db->query()}) AS tbl {$whereQuery} {$orderQuery}");
-            $data = $db->database()->prepare(trim("SELECT * FROM {$query} LIMIT {$this->limit} OFFSET {$this->offset}"));
-            $data->execute($bindings);
-            $this->data = $data->fetchAll();
+            $query = trim("({$query}) AS {$this->tableNameAlias} {$whereQuery} {$orderQuery}");
+            $data = $db->query(trim("SELECT * FROM {$query} LIMIT {$this->limit} OFFSET {$this->offset}"), $bindings);
+            $this->data = $data->get();
         } else {
             $result = $data;
             $isFiltered = false;
@@ -164,6 +170,11 @@ class Datatable
         }
     }
 
+    public function sanitizeColumn($column)
+    {
+        return preg_replace('/[\s\-.]+/', '_', $column);
+    }
+
     public function columns($columns = [])
     {
         $this->columns = $columns;
@@ -180,7 +191,7 @@ class Datatable
     {
         $this->editColumns = array_filter($this->editColumns);
 
-        $customValue = function ($data) {
+        $data = array_map(function ($data) {
             foreach (array_keys($this->editColumns) as $column) {
                 if (in_array($column, array_keys($data))) {
                     $data[$column] = $this->editColumns[$column]($data);
@@ -188,9 +199,21 @@ class Datatable
             }
 
             return $data;
-        };
+        }, $this->data);
 
-        $data = array_map($customValue, $this->data);
+        $request = request('datatable.column');
+        $columns = array_filter($this->columns, function ($column) use ($request) {
+            if (!empty($request)) {
+                foreach ($request as $key => $value) {
+                    $value = is_array($value) ? $value : [$value];
+                    if (isset($column[$key]) && in_array($column[$key], $value)) {
+                        return $column;
+                    }
+                }
+                return null;
+            }
+            return $column;
+        });
 
         $data = array_merge([
             'loadtime'      => number_format(microtime(true) - $this->loadtime, 3, ',', '.'),
@@ -199,13 +222,8 @@ class Datatable
             'total'         => $this->total,
             'totalFiltered' => $this->totalFiltered,
             'data'          => $data
-        ], (!empty($this->columns) ? ['columns' => $this->columns] : []));
+        ], (!empty($this->columns) ? ['columns' => $columns] : []));
 
         return response($data, $code, $gzip, $sanitize, $except_sanitize);
-    }
-
-    protected function sanitizeColumn($column)
-    {
-        return preg_replace('/[\s\-.]+/', '_', $column);
     }
 }

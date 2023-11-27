@@ -72,7 +72,12 @@ class Validate
 
                 $validate = ($method instanceof \Closure)
                     ? $method($value, ...$parameter)
-                    : (is_null($method) ? null : $this->{$method}($value, ...$parameter));
+                    : (is_null($method)
+                        ? null
+                        : ((in_array($name, ['required']) || !empty($value))
+                            ? $this->{$method}($value, ...$parameter)
+                            : null)
+                    );
 
                 if ($validate) {
                     $message = in_array($name, array_keys($this->messages)) ? $this->messages[$name] : $validate;
@@ -206,10 +211,9 @@ class Validate
         $conditions = implode(' AND ', array_filter(["{$column} = :column", $ignore, trim(implode(' ', $conditions))]));
         $where = "WHERE {$conditions}";
 
-        $exists = query(
+        $exists = db($connection)->query(
             "SELECT {$column} FROM {$table} {$where} LIMIT 1",
-            $bindings,
-            $connection
+            $bindings
         )->fetchColumn();
 
         if ($exists) {
@@ -219,26 +223,26 @@ class Validate
 
     public function ruleFile($value)
     {
-        if (!empty(array_diff(array_keys($value), ['name', 'type', 'tmp_name', 'error', 'size']))) {
+        if (!(is_array($value) && empty(array_filter(array_diff(array_keys($value), ['name', 'mimeType', 'type', 'path', 'error', 'size']))))) {
             return 'The :attribute field must be a file';
         }
     }
 
-    public function ruleMimes($value)
+    public function ruleMimes($value, ...$params)
     {
         if (true) {
             return 'The :attribute field must be a file of type: ' . implode(', ', $params);
         }
     }
 
-    public function ruleMin($value)
+    public function ruleMin($value, ...$params)
     {
         if (true) {
             return 'The :attribute field must have at least ' . implode(', ', $params);
         }
     }
 
-    public function ruleMax($value)
+    public function ruleMax($value, ...$params)
     {
         if (true) {
             return 'The :attribute field must not be greater than ' . implode(', ', $params);

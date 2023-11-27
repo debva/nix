@@ -142,7 +142,7 @@ class Authentication extends Authorization
             $field = implode(', ', $fields);
 
             if (!is_null($token)) {
-                query(
+                db()->query(
                     "INSERT INTO {$table} ({$field})
                     SELECT * FROM (SELECT :a AS `{$fields[0]}`, :b AS `{$fields[1]}`, :c AS `{$fields[2]}`, :d AS `{$fields[3]}`) AS temp 
                     WHERE NOT EXISTS (SELECT `{$fields[2]}` FROM {$table} WHERE `{$fields[2]}` = :c)",
@@ -152,7 +152,7 @@ class Authentication extends Authorization
                         'c' => md5($token),
                         'd' => isset($payloads['exp']) ? date('Y-m-d H:i:s', $payloads['exp']) : null,
                     ]
-                );
+                )->execute();
             }
 
             return $self;
@@ -301,7 +301,7 @@ class Authentication extends Authorization
 
         $exp = end($fields);
 
-        query("DELETE FROM {$table} WHERE {$exp} < NOW()");
+        db()->query("DELETE FROM {$table} WHERE {$exp} < NOW()")->execute();
 
         return true;
     }

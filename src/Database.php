@@ -60,18 +60,18 @@ class Database
         }
     }
 
-    protected function sanitizeQuery($query)
+    public function sanitizeQuery($query)
     {
         return trim(preg_replace('/[\n\t]+|\s+/', ' ', $query));
     }
 
-    protected function sanitizeBindings($bindings)
+    public function sanitizeBindings($bindings)
     {
         if (!is_array($bindings)) return [$bindings];
         return $bindings;
     }
 
-    protected function buildConditions(array $values)
+    public function buildConditions(array $values)
     {
         if (empty($values)) return [
             'query'     => null,
@@ -82,7 +82,7 @@ class Database
             $operator = isset($value['operator']) ? $value['operator'] : 'AND';
             $condition = $value['condition'];
 
-            if (count($condition) < 3) {
+            if (count($condition) < 3 || count($condition) > 3) {
                 throw new \Exception('Condition must have 3 parameters!');
             }
 
@@ -111,7 +111,7 @@ class Database
         ];
     }
 
-    protected function buildFields(array $fields, $update = null)
+    public function buildFields(array $fields, $update = null)
     {
         if (is_null($update)) {
             return implode(', ', array_keys($fields));
@@ -128,7 +128,7 @@ class Database
         }, array_keys($fields)));
     }
 
-    protected function buildPlaceholder(array $fields)
+    public function buildPlaceholder(array $fields)
     {
         return implode(', ', array_fill(0, count($fields), '?'));
     }
@@ -142,6 +142,26 @@ class Database
     public function getConnection()
     {
         return $this->database;
+    }
+
+    public function getWhereClause()
+    {
+        return $this->whereClause;
+    }
+
+    public function getQuery()
+    {
+        return $this->query;
+    }
+
+    public function getBindings()
+    {
+        return $this->bindings;
+    }
+
+    public function getStatement()
+    {
+        return $this->statement;
     }
 
     public function getKeyName()
@@ -205,7 +225,7 @@ class Database
         return vsprintf($sql, $bindings);
     }
 
-    public function fetchColumn()
+    public function column()
     {
         try {
             if (is_array($this->statement)) {
@@ -224,7 +244,7 @@ class Database
         }
     }
 
-    public function fetch()
+    public function first()
     {
         try {
             if (is_array($this->statement)) {
@@ -301,26 +321,14 @@ class Database
     public function create($table, array $values)
     {
         if ($this->withTransaction) $this->beginTransaction();
+        $currentTransactionLevel = $this->getTransactionLevel();
 
         try {
             $result = [];
-            if (count($values) != count($values, COUNT_RECURSIVE)) {
-                $queries = array_map(function ($values) use ($table) {
-                    $fields = $this->buildFields($values);
-                    $placeholder = $this->buildPlaceholder($values);
-                    return [
-                        'query'     => $this->sanitizeQuery("INSERT INTO {$table} ({$fields}) VALUES ({$placeholder})"),
-                        'bindings'  => $this->sanitizeBindings(array_values($values))
-                    ];
-                }, $values);
 
-                if (!empty($queries)) {
-                    $this->query($queries);
-                    array_map(function ($values, $statement, $bindings) use (&$result) {
-                        $statement->execute($bindings);
-                        $lastInsertId = $this->getConnection()->lastInsertId($this->getKeyName());
-                        $result[] = $lastInsertId === 0 ? $values : array_merge([$this->getKeyName() => $lastInsertId], $values);
-                    }, $values, $this->statement, $this->bindings);
+            if (count($values) != count($values, COUNT_RECURSIVE)) {
+                foreach ($values as $value) {
+                    $result = array_merge($result, [$this->create($table, $value)]);
                 }
             } else {
                 $fields = $this->buildFields($values);
@@ -335,10 +343,10 @@ class Database
                 $result = $lastInsertId === 0 ? $values : array_merge([$this->getKeyName() => $lastInsertId], $values);
             }
 
-            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->commit();
+            if ($currentTransactionLevel === $this->transactionLevelUsed) $this->commit();
             return $result;
         } catch (\Exception $e) {
-            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->rollBack();
+            if ($currentTransactionLevel === $this->transactionLevelUsed) $this->rollBack();
             throw new \Exception($e->getMessage(), 500);
         }
     }
@@ -346,6 +354,7 @@ class Database
     public function update($table, array $values, array $conditions)
     {
         if ($this->withTransaction) $this->beginTransaction();
+        $currentTransactionLevel = $this->getTransactionLevel();
 
         try {
             $result = [];
@@ -355,20 +364,9 @@ class Database
             }
 
             if (count($values) != count($values, COUNT_RECURSIVE)) {
-                $queries = array_map(function ($values, $conditions) use ($table) {
-                    $fields = $this->buildFields($values, true);
-                    $builder = $this->buildConditions($conditions);
-
-                    return [
-                        'query'     => $this->sanitizeQuery("UPDATE {$table} SET {$fields} WHERE {$builder['query']}"),
-                        'bindings'  => $this->sanitizeBindings(array_merge(array_values($values), $builder['bindings']))
-                    ];
+                array_map(function ($values, $conditions) use (&$result, $table) {
+                    $result = array_merge($result, [$this->update($table, $values, $conditions)]);
                 }, $values, $conditions);
-
-                if (!empty($queries)) {
-                    $this->query($queries)->execute();
-                    foreach ($values as $value) $result[] = $value;
-                }
             } else {
                 $fields = $this->buildFields($values, true);
                 $builder = $this->buildConditions($conditions);
@@ -381,10 +379,10 @@ class Database
                 $result = $values;
             }
 
-            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->commit();
+            if ($currentTransactionLevel === $this->transactionLevelUsed) $this->commit();
             return $result;
         } catch (\Exception $e) {
-            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->rollBack();
+            if ($currentTransactionLevel === $this->transactionLevelUsed) $this->rollBack();
             throw new \Exception($e->getMessage(), 500);
         }
     }
@@ -392,16 +390,17 @@ class Database
     public function delete($table, array $conditions = [])
     {
         if ($this->withTransaction) $this->beginTransaction();
+        $currentTransactionLevel = $this->getTransactionLevel();
 
         try {
             $builder = $this->buildConditions($conditions);
             $query = is_null($builder['query']) ? '' : "WHERE {$builder['query']}";
             $this->query("DELETE FROM {$table} {$query}", $builder['bindings'])->execute();
 
-            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->commit();
+            if ($currentTransactionLevel === $this->transactionLevelUsed) $this->commit();
             return true;
         } catch (\Exception $e) {
-            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->rollBack();
+            if ($currentTransactionLevel === $this->transactionLevelUsed) $this->rollBack();
             throw new \Exception($e->getMessage(), 500);
         }
     }
@@ -409,43 +408,15 @@ class Database
     public function upsert($table, array $values, $uniqueBy = [], $update = false)
     {
         if ($this->withTransaction) $this->beginTransaction();
+        $currentTransactionLevel = $this->getTransactionLevel();
 
         try {
             $result = [];
             $uniqueBy = is_array($uniqueBy) ? $uniqueBy : [$uniqueBy];
 
             if (count($values) != count($values, COUNT_RECURSIVE)) {
-                $queries = array_map(function ($values) use ($table, $uniqueBy, $update) {
-                    $uniqueBy = array_intersect_key($values, array_flip($uniqueBy));
-                    $conditions = array_map(function ($field, $value) {
-                        return ['condition' => [$field, '=', $value]];
-                    }, array_keys($uniqueBy), array_values($uniqueBy));
-
-                    $builder = $this->buildConditions($conditions);
-                    $bindings = array_merge(array_values($values), $builder['bindings']);
-
-                    $fieldsInsert = $this->buildFields($values);
-                    $fieldsAlias = $this->buildFields($values, false);
-                    $fieldsUpdate = $this->buildFields($values, true);
-                    $fieldsSelect = $this->buildFields($uniqueBy);
-
-                    return array_merge([
-                        [
-                            'query'     => "INSERT INTO {$table} ({$fieldsInsert}) SELECT * FROM (SELECT {$fieldsAlias}) AS temp WHERE NOT EXISTS (SELECT {$fieldsSelect} FROM {$table} WHERE {$builder['query']})",
-                            'bindings'  => $bindings,
-                        ],
-                        $update ? [
-                            'query'     => "UPDATE {$table} SET {$fieldsUpdate} WHERE {$builder['query']}",
-                            'bindings'  => $bindings,
-                        ] : []
-                    ]);
-                }, $values);
-
-                $queries = array_values(array_filter(array_merge(...$queries)));
-
-                if (!empty($queries)) {
-                    $this->query($queries)->execute();
-                    foreach ($values as $value) $result[] = $value;
+                foreach ($values as $value) {
+                    $result = array_merge($result, [$this->upsert($table, $value, $uniqueBy, $update)]);
                 }
             } else {
                 $uniqueBy = array_intersect_key($values, array_flip($uniqueBy));
@@ -463,37 +434,22 @@ class Database
 
                 $this->query(array_merge([
                     [
-                        'query'     => "INSERT INTO {$table} ({$fieldsInsert}) SELECT * FROM (SELECT {$fieldsAlias}) AS temp WHERE NOT EXISTS (SELECT {$fieldsSelect} FROM {$table} WHERE {$builder['query']})",
-                        'bindings'  => $bindings,
+                        'query'     => $this->sanitizeQuery("INSERT INTO {$table} ({$fieldsInsert}) SELECT * FROM (SELECT {$fieldsAlias}) AS temp WHERE NOT EXISTS (SELECT {$fieldsSelect} FROM {$table} WHERE {$builder['query']})"),
+                        'bindings'  => $this->sanitizeBindings($bindings),
                     ],
                     $update ? [
-                        'query'     => "UPDATE {$table} SET {$fieldsUpdate} WHERE {$builder['query']}",
-                        'bindings'  => $bindings,
+                        'query'     => $this->sanitizeQuery("UPDATE {$table} SET {$fieldsUpdate} WHERE {$builder['query']}"),
+                        'bindings'  => $this->sanitizeBindings($bindings),
                     ] : []
                 ]))->execute();
 
                 $result = $values;
             }
 
-            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->commit();
+            if ($currentTransactionLevel === $this->transactionLevelUsed) $this->commit();
             return $result;
         } catch (\Exception $e) {
-            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->rollBack();
-            throw new \Exception($e->getMessage(), 500);
-        }
-    }
-
-    public function sync($relationTable, $primaryKey, $foreignKey, array $valuesPrimary, array $valuesForiegn, array $optionalFields = [])
-    {
-        if ($this->withTransaction) $this->beginTransaction();
-
-        try {
-            $result = [];
-
-            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->commit();
-            return $result;
-        } catch (\Exception $e) {
-            if ($this->getTransactionLevel() === $this->transactionLevelUsed) $this->rollBack();
+            if ($currentTransactionLevel === $this->transactionLevelUsed) $this->rollBack();
             throw new \Exception($e->getMessage(), 500);
         }
     }

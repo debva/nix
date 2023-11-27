@@ -9,36 +9,14 @@ class Request
         $request = $_REQUEST;
 
         if (!empty($_FILES)) {
-            $request = array_merge_recursive($request, $_FILES);
-            // $files = array_map(function ($file) {
-            //     $files = [];
-            //     foreach ($file['name'] as $key => $name) {
-            //         $files[$key] = [
-            //             'name'      => $name,
-            //             'type'      => $file['type'][$key],
-            //             'tmp_name'  => $file['tmp_name'][$key],
-            //             'error'     => $file['error'][$key],
-            //             'size'      => $file['size'][$key]
-            //         ];
-            //     }
-            //     return $files;
-            // }, $_FILES);
+            $files = array_map(function ($file) {
+                return $this->getFiles($file['name'], $file['type'], $file['tmp_name'], $file['error'], $file['size']);
+            }, $_FILES);
 
-            // $request = array_replace_recursive($request, $files);
-
-            // $recursiveKSort = function (&$array) use (&$recursiveKSort) {
-            //     ksort($array);
-            //     foreach ($array as &$value) {
-            //         if (is_array($value)) {
-            //             $recursiveKSort($value);
-            //         }
-            //     }
-            // };
-
-            // $recursiveKSort($request);
+            $request = array_merge_recursive($request, $files);
         }
 
-        if (!empty($body = file_get_contents("php://input")) and !is_null(json_decode($body, true))) {
+        if (!empty($body = file_get_contents("php://input")) && !is_null(json_decode($body, true))) {
             $request = array_merge($request, json_decode($body, true));
         }
 
@@ -82,5 +60,37 @@ class Request
         }
 
         return $request;
+    }
+
+    protected function getFiles($name, $type, $tmpName, $error, $size)
+    {
+        if (empty($tmpName)) return null;
+
+        if (is_string($tmpName)) return [
+            'name'      => $name,
+            'mimeType'  => $type,
+            'type'      => 'file',
+            'path'      => $tmpName,
+            'error'     => $error,
+            'size'      => $size
+        ];
+
+        array_walk($tmpName, function ($path, $key) use (&$result, $name, $type, $error, $size) {
+            if (is_array($path)) {
+                $result[$key] = $this->getFiles($name[$key], $type[$key], $path, $error[$key], $size[$key]);
+            } else {
+                if (empty($path)) $result[$key] = null;
+                else $result[$key] = [
+                    'name'      => $name[$key],
+                    'mimeType'  => $type[$key],
+                    'type'      => 'file',
+                    'path'      => $path,
+                    'error'     => $error[$key],
+                    'size'      => $size[$key]
+                ];
+            }
+        });
+
+        return array_filter($result);
     }
 }

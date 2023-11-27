@@ -1,6 +1,6 @@
 <?php
 
-namespace Debva\Nix;
+namespace Debva\Nix\Backup;
 
 class Session
 {
@@ -53,7 +53,7 @@ class Session
 
         $fields = implode(', ', $this->fields);
 
-        query(
+        db()->query(
             "INSERT INTO {$this->table} ($fields)
             SELECT * FROM (SELECT :a AS `{$this->fields[0]}`, :b AS `{$this->fields[1]}`, :c AS `{$this->fields[2]}`) AS temp 
             WHERE NOT EXISTS (SELECT `{$this->fields[0]}` FROM {$this->table} WHERE `{$this->fields[0]}` = :a)",
@@ -62,19 +62,19 @@ class Session
                 'b' => serialize($this->data),
                 'c' => is_null($this->expiresAt) ? null : date('Y-m-d H:i:s', ($this->expiresAt + time())),
             ]
-        );
+        )->execute();
 
         return $this->name;
     }
 
     public function renew($name = null, $lifetime = null)
     {
-        $session = query(
+        $session = db()->query(
             "SELECT {$this->fields[1]}, {$this->fields[2]} FROM {$this->table} WHERE {$this->fields[0]} = :a",
             ['a' => $this->name]
-        )->fetchObject();
+        )->first();
 
-        if (!$session || (!is_null($session->expires_at) && strtotime($session->expires_at) < time())) {
+        if (!$session || (!is_null($session['expires_at']) && strtotime($session['expires_at']) < time())) {
             throw new \Exception('Session not found!', 404);
         }
 
@@ -82,30 +82,30 @@ class Session
 
         $name = is_null($name) ? $this->name : md5($name);
 
-        query(
+        db()->query(
             "UPDATE {$this->table} SET {$this->fields[0]} = :d, {$this->fields[2]} = :c WHERE {$this->fields[0]} = :a",
             [
                 'a' => $this->name,
                 'c' => is_null($this->expiresAt) ? null : date('Y-m-d H:i:s', ($this->expiresAt + time())),
                 'd' => $name
             ]
-        );
+        )->execute();
 
         return $this->name = $name;
     }
 
     public function set($key, $value = null)
     {
-        $session = query(
+        $session = db()->query(
             "SELECT {$this->fields[1]}, {$this->fields[2]} FROM {$this->table} WHERE {$this->fields[0]} = :a",
             ['a' => $this->name]
-        )->fetchObject();
+        )->first();
 
-        if (!$session || (!is_null($session->expires_at) && strtotime($session->expires_at) < time())) {
+        if (!$session || (!is_null($session['expires_at']) && strtotime($session['expires_at']) < time())) {
             throw new \Exception('Session not found!', 404);
         }
 
-        $data = unserialize($session->data);
+        $data = unserialize($session['data']);
 
         if (is_array($key)) {
             foreach ($key as $key => $value) $data = array_merge($data, [$key => $value]);
@@ -113,65 +113,65 @@ class Session
             $data = array_merge($data, [$key => $value]);
         }
 
-        query(
+        db()->query(
             "UPDATE {$this->table} SET {$this->fields[1]} = :b WHERE {$this->fields[0]} = :a",
             ['a' => $this->name, 'b' => serialize($data)]
-        );
+        )->execute();
 
         return true;
     }
 
     public function get($key = null)
     {
-        $session = query(
+        $session = db()->query(
             "SELECT {$this->fields[1]}, {$this->fields[2]} FROM {$this->table} WHERE {$this->fields[0]} = :a",
             ['a' => $this->name]
-        )->fetchObject();
+        )->first();
 
-        if (!$session || (!is_null($session->expires_at) && strtotime($session->expires_at) < time())) {
+        if (!$session || (!is_null($session['expires_at']) && strtotime($session['expires_at']) < time())) {
             throw new \Exception('Session not found!', 404);
         }
 
-        $data = unserialize($session->data);
+        $data = unserialize($session['data']);
 
         return is_null($key) ? $data : (isset($data[$key]) ? $data[$key] : false);
     }
 
     public function delete($key)
     {
-        $session = query(
+        $session = db()->query(
             "SELECT {$this->fields[1]}, {$this->fields[2]} FROM {$this->table} WHERE {$this->fields[0]} = :a",
             ['a' => $this->name]
-        )->fetchObject();
+        )->first();
 
-        if (!$session || (!is_null($session->expires_at) && strtotime($session->expires_at) < time())) {
+        if (!$session || (!is_null($session['expires_at']) && strtotime($session['expires_at']) < time())) {
             throw new \Exception('Session not found!', 404);
         }
 
-        $data = unserialize($session->data);
+        $data = unserialize($session['data']);
         unset($data[$key]);
 
-        query(
+        db()->query(
             "UPDATE {$this->table} SET {$this->fields[1]} = :b WHERE {$this->fields[0]} = :a",
             ['a' => $this->name, 'b' => serialize($data)]
-        );
+        )->execute();
 
         return true;
     }
 
     public function destroy()
     {
-        query(
+        db()->query(
             "DELETE FROM {$this->table} WHERE {$this->fields[0]} = :a",
             ['a' => $this->name]
-        );
+        )->execute();
 
         return true;
     }
 
     public function purge()
     {
-        query("DELETE FROM {$this->table} WHERE {$this->fields[2]} < NOW()");
+        db()->query("DELETE FROM {$this->table} WHERE {$this->fields[2]} < NOW()")->execute();
 
         return true;
     }

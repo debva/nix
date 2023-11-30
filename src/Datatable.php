@@ -201,7 +201,7 @@ class Datatable
             return $data;
         }, $this->data);
 
-        $request = request('datatable.column');
+        $request = request('datatable.columns');
         $columns = array_filter($this->columns, function ($column) use ($request) {
             if (!empty($request)) {
                 foreach ($request as $key => $value) {
@@ -222,7 +222,7 @@ class Datatable
             'total'         => $this->total,
             'totalFiltered' => $this->totalFiltered,
             'data'          => $data
-        ], (!empty($this->columns) ? ['columns' => $columns] : []));
+        ], (!empty($this->columns) ? ['columns' => array_values($columns)] : []));
 
         return response($data, $code, $gzip, $sanitize, $except_sanitize);
     }

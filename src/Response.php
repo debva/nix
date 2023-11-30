@@ -32,6 +32,6 @@ class Response
         if ($gzip) ini_set('zlib.output_compression', 'on');
 
         print(json_encode($data));
-        exit;
+        exit(1);
     }
 }

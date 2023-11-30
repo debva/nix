@@ -71,7 +71,8 @@ if (!function_exists('service')) {
             $name = strtolower(preg_replace('/([a-z])([A-Z])|-/', '$1_$2', $serviceClass));
             $class->macro($name, function ($self, ...$args) use ($service, $serviceClass) {
                 require_once($service);
-                return new $serviceClass(...$args);
+                $class = new $serviceClass(...$args);
+                return method_exists($class, '__invoke') ? $class(...$args) : $class;
             });
         }
 
@@ -236,5 +237,24 @@ if (!function_exists('endsWith')) {
         }
 
         return substr($haystack, -strlen($needle)) === $needle;
+    }
+}
+
+if (!function_exists('uuidv4')) {
+    function uuidv4()
+    {
+        $data = uniqid(mt_rand(), true);
+        $data .= microtime(true) * 10000;
+        $data .= getmypid();
+        $uuid = md5($data);
+
+        return sprintf(
+            '%08s-%04s-%04s-%04s-%12s',
+            substr($uuid, 0, 8),
+            substr($uuid, 8, 4),
+            substr($uuid, 12, 4),
+            substr($uuid, 16, 4),
+            substr($uuid, 20, 12)
+        );
     }
 }

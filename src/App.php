@@ -2,6 +2,8 @@
 
 namespace Debva\Nix;
 
+use Exception;
+
 class App extends Bridge
 {
     protected $appPath = 'app';
@@ -16,6 +18,8 @@ class App extends Bridge
 
     protected $requestMethod;
 
+    protected $isError = false;
+
     protected $httpMethod = ['__GET', '__POST', '__PUT', '__PATCH', '__DELETE'];
 
     public function __construct()
@@ -25,19 +29,30 @@ class App extends Bridge
         ini_set('display_errors', 'Off');
 
         set_exception_handler(function ($e) {
-            $this->handleError('Exception', $e->getMessage(), $e->getCode(), $e->getFile(), $e->getLine(), $e->getTrace());
+            if (!$this->isError) {
+                $this->isError = true;
+                $this->handleError('Exception', $e->getMessage(), $e->getCode(), $e->getFile(), $e->getLine(), $e->getTrace());
+            }
         });
 
         set_error_handler(function ($errno, $message, $file, $line) {
-            $this->handleError('Error', $message, 500, $file, $line);
+            if (!$this->isError) {
+                $this->isError = true;
+                $this->handleError('Error', $message, 500, $file, $line);
+            }
         });
 
         register_shutdown_function(function () {
-            $error = error_get_last();
+            if (!$this->isError) {
+                $this->isError = true;
+                $error = error_get_last();
 
-            if ($error !== null && env('APP_DEBUG')) {
-                $this->handleError('Fatal Error', $error['message'], 500, $error['file'], $error['line']);
+                if ($error !== null && env('APP_DEBUG')) {
+                    $this->handleError('Fatal Error', $error['message'], 500, $error['file'], $error['line']);
+                }
             }
+
+            exit(0);
         });
 
         parent::__construct();
@@ -156,9 +171,9 @@ class App extends Bridge
             ], $code, true);
         } else {
             response([
-                'code'      => $code,
-                'message'   => $message
-            ], $code, true);
+                'code'      => 500,
+                'message'   => 'Internal Server Error',
+            ], 500, true);
         }
 
         exit;

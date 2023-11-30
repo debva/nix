@@ -11,6 +11,7 @@ class Extension
         $extensions = [
             'bpjs'      => \Debva\Nix\Extension\BPJS::class,
             'inacbg'    => \Debva\Nix\Extension\InaCBGs::class,
+            'satusehat' => \Debva\Nix\Extension\SatuSehat::class,
         ];
 
         $ext = strtolower($extension);

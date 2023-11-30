@@ -10,6 +10,8 @@ class Database
 
     protected $whereClause;
 
+    protected $mark;
+
     protected $primaryKey = 'id';
 
     protected $query;
@@ -41,7 +43,13 @@ class Database
 
         $this->connection = $connection;
 
-        $this->whereClause = in_array($connection, ['pgsql']) ? 'ILIKE' : 'LIKE';
+        if (in_array($connection, ['pgsql'])) {
+            $this->whereClause = 'ILIKE';
+            $this->mark = '"';
+        } else {
+            $this->whereClause = 'LIKE';
+            $this->mark = '`';
+        }
 
         try {
             if (!isset($connection, $host, $dbname, $user, $password)) {
@@ -82,8 +90,8 @@ class Database
             $operator = isset($value['operator']) ? $value['operator'] : 'AND';
             $condition = $value['condition'];
 
-            if (count($condition) < 3 || count($condition) > 3) {
-                throw new \Exception('Condition must have 3 parameters!');
+            if (count($condition) < 2 || count($condition) > 3) {
+                throw new \Exception('Condition must have 2/3 parameters!');
             }
 
             $operators[] = strtoupper($operator);
@@ -99,8 +107,10 @@ class Database
                 return "{$operator} ({$query})";
             }
 
-            $bindings[] = $condition[2];
-            $condition[count($condition) - 1] = '?';
+            $bindings[] = $condition[count($condition) > 2 ? 2 : 1];
+            $condition[count($condition) > 2 ? 2 : 1] = '?';
+
+            $condition[0] = "{$this->mark}{$condition[0]}{$this->mark}";
             $condition = implode(' ', $condition);
             return "{$operator} {$condition}";
         }, $operators, $conditions);
@@ -114,17 +124,17 @@ class Database
     public function buildFields(array $fields, $update = null)
     {
         if (is_null($update)) {
-            return implode(', ', array_keys($fields));
+            return implode('', [$this->mark, implode("{$this->mark}, {$this->mark}", array_keys($fields)), $this->mark]);
         }
 
         if ($update) {
             return implode(', ', array_map(function ($field) {
-                return "{$field} = ?";
+                return "{$this->mark}{$field}{$this->mark} = ?";
             }, array_keys($fields)));
         }
 
         return implode(', ', array_map(function ($field) {
-            return "? AS {$field}";
+            return "? AS {$this->mark}{$field}{$this->mark}";
         }, array_keys($fields)));
     }
 
@@ -147,6 +157,11 @@ class Database
     public function getWhereClause()
     {
         return $this->whereClause;
+    }
+
+    public function getMark()
+    {
+        return $this->mark;
     }
 
     public function getQuery()

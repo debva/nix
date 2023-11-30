@@ -72,6 +72,10 @@ class SatuSehat
 
     public function setToken($token)
     {
+        if (!is_string($token)) {
+            throw new \Exception('Token must be a string');
+        }
+
         $this->token = $token;
         $this->headers = ["Authorization: Bearer {$this->token}", 'Content-Type: application/json'];
         return $this;

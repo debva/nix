@@ -16,7 +16,7 @@ class Datatable
 
     protected $data = [];
 
-    protected $columns;
+    protected $columns = [];
 
     protected $editColumns = [];
 
@@ -44,6 +44,7 @@ class Datatable
             $db = $data;
             $query = $db->getQuery();
             $whereClause = $db->getWhereClause();
+            $mark = $db->getMark();
             $bindings = $originalBindings = $db->getBindings();
             $isNamedBindingType = array_reduce(array_keys($bindings), function ($carry, $key) {
                 return $carry && is_string($key);
@@ -55,7 +56,7 @@ class Datatable
                 foreach ($request['search'] as $column => $value) {
                     $binding = strtoupper("{$this->namingSearchBindings}{$this->sanitizeColumn($column)}");
                     $bindings = array_merge($bindings, $isNamedBindingType ? [$binding => "%{$value}%"] : ["%{$value}%"]);
-                    $searchQuery[] = "{$this->tableNameAlias}.{$this->sanitizeColumn($column)} {$whereClause} " . ($isNamedBindingType ? ":{$binding}" : '?');
+                    $searchQuery[] = "{$this->tableNameAlias}.{$mark}{$this->sanitizeColumn($column)}{$mark} {$whereClause} " . ($isNamedBindingType ? ":{$binding}" : '?');
                 }
                 $searchQuery = implode(' OR ', $searchQuery);
                 $searchQuery = "({$searchQuery})";
@@ -67,7 +68,7 @@ class Datatable
                 foreach ($request['filter'] as $column => $value) {
                     $binding = strtoupper("{$this->namingFilterBindings}{$this->sanitizeColumn($column)}");
                     $bindings = array_merge($bindings, $isNamedBindingType ? [$binding => "%{$value}%"] : ["%{$value}%"]);
-                    $filterQuery[] = "{$this->tableNameAlias}.{$this->sanitizeColumn($column)} {$whereClause} " . ($isNamedBindingType ? ":{$binding}" : '?');
+                    $filterQuery[] = "{$this->tableNameAlias}.{$mark}{$this->sanitizeColumn($column)}{$mark} {$whereClause} " . ($isNamedBindingType ? ":{$binding}" : '?');
                 }
                 $filterQuery = implode(' AND ', $filterQuery);
                 $filterQuery = "({$filterQuery})";
@@ -78,7 +79,7 @@ class Datatable
                 $orderQuery = [];
                 foreach ($request['sort'] as $column => $sort) {
                     if (in_array(strtoupper($sort), ['ASC', 'DESC'])) {
-                        $orderQuery[] = "{$this->tableNameAlias}.{$column} " . strtoupper($sort);
+                        $orderQuery[] = "{$this->tableNameAlias}.{$mark}{$this->sanitizeColumn($column)}{$mark} " . strtoupper($sort);
                     }
                 }
 

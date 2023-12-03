@@ -108,10 +108,12 @@ class Database
             }
 
             $bindings[] = $condition[count($condition) > 2 ? 2 : 1];
-            $condition[count($condition) > 2 ? 2 : 1] = '?';
 
             $condition[0] = "{$this->mark}{$condition[0]}{$this->mark}";
+            $condition[1] = count($condition) < 3 ? '=' : $condition[1];
+            $condition[2] = '?';
             $condition = implode(' ', $condition);
+
             return "{$operator} {$condition}";
         }, $operators, $conditions);
 
@@ -374,11 +376,11 @@ class Database
         try {
             $result = [];
 
-            if (count($values) !== count($conditions)) {
-                throw new \Exception("Invalid number of where for update statement!");
-            }
-
             if (count($values) != count($values, COUNT_RECURSIVE)) {
+                if (count($values) !== count($conditions)) {
+                    throw new \Exception("Invalid number of where for update statement!");
+                }
+
                 array_map(function ($values, $conditions) use (&$result, $table) {
                     $result = array_merge($result, [$this->update($table, $values, $conditions)]);
                 }, $values, $conditions);

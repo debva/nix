@@ -193,14 +193,6 @@ if (!function_exists('isMethod')) {
     }
 }
 
-if (!function_exists('userAgent')) {
-    function userAgent($uagent)
-    {
-        $userAgent = nix('userAgent');
-        return $userAgent($uagent);
-    }
-}
-
 if (!function_exists('validate')) {
     function validate($rules, $options = [])
     {

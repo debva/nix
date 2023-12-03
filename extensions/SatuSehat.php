@@ -29,6 +29,8 @@ class SatuSehat
 
     protected $module;
 
+    protected $mapping;
+
     public function __construct($organizationID, $clientKey, $secretKey, $env = 'development')
     {
         $this->organizationID = $organizationID;
@@ -60,14 +62,14 @@ class SatuSehat
         }
     }
 
-    public function __call($method, $arguments)
+    public function __call($name, $arguments)
     {
-        $method = "{$this->module}{$method}";
+        $method = "{$this->module}{$name}";
         if (method_exists($this, $method)) {
             return $this->$method(...$arguments);
         }
 
-        throw new \Exception("Method {$method} does not exist!");
+        throw new \Exception("Method {$name} does not exist!");
     }
 
     public function setToken($token)
@@ -94,6 +96,30 @@ class SatuSehat
             throw new \Exception('Unable to connect to Satu Sehat server');
         }
 
-        return $data;
+        if (isset($data['issue']) && count($data['issue']) > 0) {
+            return [
+                'errors' => array_map(function ($issue) {
+                    if (isset($issue['diagnostics'])) {
+                        throw new \Exception($issue['diagnostics'], 400);
+                    }
+
+                    if (isset($issue['details']['text'])) {
+                        throw new \Exception($issue['details']['text'], 400);
+                    }
+
+                    throw new \Exception('Unknown issue!', 404);
+                }, $data['issue'])
+            ];
+        }
+
+        if (isset($data['fault']['faultstring'])) {
+            throw new \Exception($data['fault']['faultstring'], 400);
+        }
+
+        if (isset($data['Error'])) {
+            throw new \Exception($data['Error'], 400);
+        }
+
+        return $this->mapping ? $this->mapping->response($data) : $data;
     }
 }

@@ -2,119 +2,120 @@
 
 namespace Debva\Nix\Extension\SatuSehat\Mapping\Organization;
 
-class Create
+use Debva\Nix\Extension\SatuSehat\Base;
+
+class Create extends Base
 {
     public function body($data)
     {
-        extract($data);
+        $IHS = $this->mapping($data, 'IHS');
+        $HISParent = $this->mapping($data, 'HISParent');
 
-        return [
-            'resourceType' => 'Organization',
-            'identifier' => [
-                [
-                    'use'       => 'official',
-                    'system'    => "http://sys-ids.kemkes.go.id/organization/{$organizationID}",
-                    'value'     => "{$name} {$partOfName}"
-                ]
-            ],
-            'active' => $active,
-            'type' => [
-                [
-                    'coding' => [
-                        [
-                            'system'    => 'http://terminology.hl7.org/CodeSystem/organization-type',
-                            'code'      => 'dept',
-                            'display'   => 'Hospital Department'
-                        ]
-                    ]
-                ]
-            ],
-            'name' => $name,
-            'telecom' => [
-                [
-                    'system'    => 'phone',
-                    'value'     => $phone,
-                    'use'       => 'work'
-                ],
-                [
-                    'system'    => 'email',
-                    'value'     => $email,
-                    'use'       => 'work'
-                ],
-                [
-                    'system'    => 'url',
-                    'value'     => $url,
-                    'use'       => 'work'
-                ],
-            ],
-            'address' => [
-                [
-                    'use'           => 'work',
-                    'type'          => 'both',
-                    'line'          => [$line],
-                    'city'          => $city,
-                    'postalCode'    => $postalCode,
-                    'country'       => $country,
-                    'extension'     => [
-                        [
-                            'url'       => 'https://fhir.kemkes.go.id/r4/StructureDefinition/administrativeCode',
-                            'extension' => [
-                                [
-                                    'url'       => 'province',
-                                    'valueCode' => $provinceCode
-                                ],
-                                [
-                                    'url'       => 'city',
-                                    'valueCode' => $cityCode
-                                ],
-                                [
-                                    'url'       => 'district',
-                                    'valueCode' => $districtCode
-                                ],
-                                [
-                                    'url'       => 'village',
-                                    'valueCode' => $villageCode
-                                ],
-                            ]
-                        ]
-                    ]
-                ]
-            ],
-            'partOf' => [
-                'reference' => "Organization/{$partOfId}"
-            ]
+        $type = $this->mapping($data, 'type');
+
+        $active = $this->mapping($data, 'active');
+        $name = $this->mapping($data, 'name');
+
+        $phone = $this->mapping($data, 'phone');
+        $email = $this->mapping($data, 'email');
+        $url = $this->mapping($data, 'url');
+
+        $line = $this->mapping($data, 'line');
+        $city = $this->mapping($data, 'city');
+        $district = $this->mapping($data, 'district');
+        $state = $this->mapping($data, 'state');
+        $postalCode = $this->mapping($data, 'postalCode');
+        $country = $this->mapping($data, 'country');
+
+        $provinceCode = $this->mapping($data, 'provinceCode');
+        $cityCode = $this->mapping($data, 'cityCode');
+        $districtCode = $this->mapping($data, 'districtCode');
+        $villageCode = $this->mapping($data, 'villageCode');
+
+        $partOf = $this->mapping($data, 'partOf');
+        $partOfDisplay = $this->mapping($data, 'partOfDisplay');
+
+        $data = [
+            'identifier' => [$this->getDataType('Identifier', $this->mapping([
+                'system' => is_null($IHS) ? null : "http://sys-ids.kemkes.go.id/organization/{$IHS}",
+                'value' => is_null($name) || is_null($HISParent) ? null : "{$name} {$HISParent}",
+            ]))],
+            'type' => $this->mapping($this->getDataType('CodeableConcept', $this->mapping([
+                'coding' => [[
+                    'system' => is_null($type) ? null : 'http://terminology.hl7.org/CodeSystem/organization-type',
+                    'code' => is_null($type) ? null : $type
+                ]]
+            ]), 'OrganizationType')),
+            'active' => is_null($active) ? null : $active,
+            'name' => is_null($name) ? null : $name,
+            'telecom' => $this->mapping(array_filter(array_merge(
+                [is_null($phone) ? [] : ['system' => 'phone', 'value' => $phone, 'use' => 'work']],
+                [is_null($email) ? [] : ['system' => 'email', 'value' => $email, 'use' => 'work']],
+                [is_null($url) ? [] : ['system' => 'url', 'value' => $url, 'use' => 'work']]
+            )), null, function ($telecom) {
+                return $this->getDataType('ContactPoint', $telecom);
+            }),
+            'address' => $this->getDataType('Address', $this->mapping([
+                'use' => 'work',
+                'line' => is_null($line) ? [] : [$line],
+                'city' => is_null($city) ? null : $city,
+                'district' => is_null($district) ? null : $district,
+                'state' => is_null($state) ? null : $state,
+                'postalCode' => is_null($postalCode) ? null : $postalCode,
+                'country' => is_null($country) ? null : $country,
+                'extension' => !empty(array_filter([$provinceCode, $cityCode, $districtCode, $villageCode])) ? [[
+                    'url' => 'https://fhir.kemkes.go.id/r4/StructureDefinition/administrativeCode',
+                    'extension' => $this->mapping(array_values(array_filter(array_merge(
+                        [is_null($provinceCode) ? [] : ['url' => 'province', 'valueCode' => $provinceCode]],
+                        [is_null($cityCode) ? [] : ['url' => 'city', 'valueCode' => $cityCode]],
+                        [is_null($districtCode) ? [] : ['url' => 'district', 'valueCode' => $districtCode]],
+                        [is_null($villageCode) ? [] : ['url' => 'village', 'valueCode' => $villageCode]]
+                    ))))
+                ]] : []
+            ])),
+            'partOf' => $this->getDataType('Reference', $this->mapping(['reference' => $partOf, 'display' => $partOfDisplay]), 'Location'),
         ];
+
+        return array_merge(array_filter([
+            'resourceType'  => 'Organization',
+            'identifier'    => $data['identifier'],
+            'type'          => $data['type'],
+            'name'          => $data['name'],
+            'telecom'       => $data['telecom'],
+            'address'       => $data['address'],
+            'partOf'        => $data['partOf']
+        ]), ['active' => $data['active']]);
     }
 
     public function response($data)
     {
-        $identifier = isset($data['identifier']) ? array_map(function ($identifier) {
-            return [
-                'system'    => $identifier['system'],
-                'value'     => $identifier['value']
-            ];
-        }, $data['identifier']) : null;
+        $telecom = $this->getResponse($data, 'telecom');
+        $telecom = is_null($telecom) ? [] : $telecom;
 
-        $address = isset($data['address']) ? array_map(function ($address) {
+        $partOf = array_filter(explode('/', $this->getResponse($data, 'partOf.reference')));
+        $address = $this->mapping($this->getResponse($data, 'address'), null, function ($address) {
             return [
-                'city'          => isset($address['city']) ? $address['city'] : null,
-                'country'       => isset($address['country']) ? $address['country'] : null,
-                'line'          => isset($address['line']) ? $address['line'] : null,
-                'postalCode'    => isset($address['postalCode']) ? $address['postalCode'] : null,
-                'extension'     => isset($address['extension']) ? array_map(function ($extension) {
-                    return $extension['extension'];
-                }, $address['extension']) : null,
+                'country'       => $this->getResponse($address, 'country'),
+                'city'          => $this->getResponse($address, 'city'),
+                'line'          => $this->getResponse($address, 'line.0'),
+                'provinceCode'  => $this->getResponse($address, 'extension.0.extension', ['url' => 'province'], 'valueCode'),
+                'cityCode'      => $this->getResponse($address, 'extension.0.extension', ['url' => 'city'], 'valueCode'),
+                'districtCode'  => $this->getResponse($address, 'extension.0.extension', ['url' => 'district'], 'valueCode'),
+                'villageCode'   => $this->getResponse($address, 'extension.0.extension', ['url' => 'village'], 'valueCode'),
+                'postalCode'    => $this->getResponse($address, 'postalCode'),
             ];
-        }, $data['address']) : [];
+        });
 
         return [
-            'id'            => isset($data['id']) ? $data['id'] : null,
-            'identifier'    => $identifier,
-            'active'        => isset($data['active']) ? $data['active'] : null,
-            'name'          => isset($data['name']) ? $data['name'] : null,
+            'resourceType'  => 'Organization',
+            'id'            => $this->getResponse($data, 'id'),
+            'active'        => $this->getResponse($data, 'active'),
+            'name'          => $this->getResponse($data, 'name'),
+            'identifier'    => $this->getResponse($data, 'identifier.0.value'),
+            'type'          => $this->getResponse($data, 'type.0.coding.0.display'),
+            'telecom'       => array_column($telecom, 'value', 'system'),
             'address'       => $address,
-            'telecom'       => isset($data['telecom']) ? $data['telecom'] : null,
-            'partOf'        => isset($data['partOf']['reference']) ? $data['partOf']['reference'] : null,
+            'partOf'        => end($partOf),
         ];
     }
 }

@@ -21,7 +21,7 @@ trait Organization
         $response = http()->post(
             "{$this->baseURL}/Organization",
             $this->headers,
-            $this->mapping->body(array_merge($data, ['organizationID' => $this->organizationID]))
+            $this->mapping->body(array_merge($data, ['IHS' => $this->organizationID]))
         );
 
         return $this->response($response);
@@ -40,12 +40,15 @@ trait Organization
 
     protected function organizationUpdate($id, $data)
     {
-        $this->mapping = new Update;
+        $this->mapping = new Update($this->method);
 
-        $response = http()->{isMethod()}(
+        $response = http()->{$this->method}(
             "{$this->baseURL}/Organization/{$id}",
-            array_merge($this->headers),
-            $this->mapping->body($data)
+            $this->headers,
+            $this->mapping->body(array_merge($data, [
+                'id'    => $id,
+                'IHS'   => $this->organizationID
+            ]))
         );
 
         return $this->response($response);

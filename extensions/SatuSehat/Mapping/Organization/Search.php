@@ -2,37 +2,39 @@
 
 namespace Debva\Nix\Extension\SatuSehat\Mapping\Organization;
 
-class Search
+use Debva\Nix\Extension\SatuSehat\Base;
+
+class Search extends Base
 {
     protected function defaultResponse($data)
     {
-        $identifier = isset($data['identifier']) ? array_map(function ($identifier) {
-            return [
-                'system'    => $identifier['system'],
-                'value'     => $identifier['value']
-            ];
-        }, $data['identifier']) : null;
+        $telecom = $this->getResponse($data, 'telecom');
+        $telecom = is_null($telecom) ? [] : $telecom;
 
-        $address = isset($data['address']) ? array_map(function ($address) {
+        $partOf = array_filter(explode('/', $this->getResponse($data, 'partOf.reference')));
+        $address = $this->mapping($this->getResponse($data, 'address'), null, function ($address) {
             return [
-                'city'          => isset($address['city']) ? $address['city'] : null,
-                'country'       => isset($address['country']) ? $address['country'] : null,
-                'line'          => isset($address['line']) ? $address['line'] : null,
-                'postalCode'    => isset($address['postalCode']) ? $address['postalCode'] : null,
-                'extension'     => isset($address['extension']) ? array_map(function ($extension) {
-                    return $extension['extension'];
-                }, $address['extension']) : null,
+                'country'       => $this->getResponse($address, 'country'),
+                'city'          => $this->getResponse($address, 'city'),
+                'line'          => $this->getResponse($address, 'line.0'),
+                'provinceCode'  => $this->getResponse($address, 'extension.0.extension', ['url' => 'province'], 'valueCode'),
+                'cityCode'      => $this->getResponse($address, 'extension.0.extension', ['url' => 'city'], 'valueCode'),
+                'districtCode'  => $this->getResponse($address, 'extension.0.extension', ['url' => 'district'], 'valueCode'),
+                'villageCode'   => $this->getResponse($address, 'extension.0.extension', ['url' => 'village'], 'valueCode'),
+                'postalCode'    => $this->getResponse($address, 'postalCode'),
             ];
-        }, $data['address']) : [];
+        });
 
         return [
-            'id'            => isset($data['id']) ? $data['id'] : null,
-            'identifier'    => $identifier,
-            'active'        => isset($data['active']) ? $data['active'] : null,
-            'name'          => isset($data['name']) ? $data['name'] : null,
+            'resourceType'  => 'Organization',
+            'id'            => $this->getResponse($data, 'id'),
+            'active'        => $this->getResponse($data, 'active'),
+            'name'          => $this->getResponse($data, 'name'),
+            'identifier'    => $this->getResponse($data, 'identifier.0.value'),
+            'type'          => $this->getResponse($data, 'type.0.coding.0.display'),
+            'telecom'       => array_column($telecom, 'value', 'system'),
             'address'       => $address,
-            'telecom'       => isset($data['telecom']) ? $data['telecom'] : null,
-            'partOf'        => isset($data['partOf']['reference']) ? $data['partOf']['reference'] : null,
+            'partOf'        => end($partOf),
         ];
     }
 
@@ -41,10 +43,9 @@ class Search
         if (isset($data['total']) && isset($data['entry'])) {
             return [
                 'total' => $data['total'],
-                'entry' => array_map(function ($data) {
-                    $data = $data['resource'];
-                    return $this->defaultResponse($data);
-                }, $data['entry'])
+                'entry' => $this->mapping($data, 'entry', function ($data) {
+                    return $this->defaultResponse($data['resource']);
+                })
             ];
         }
 

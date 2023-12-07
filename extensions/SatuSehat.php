@@ -3,11 +3,13 @@
 namespace Debva\Nix\Extension;
 
 use Debva\Nix\Extension\SatuSehat\Auth;
+use Debva\Nix\Extension\SatuSehat\Base;
+use Debva\Nix\Extension\SatuSehat\Location;
 use Debva\Nix\Extension\SatuSehat\Organization;
 
-class SatuSehat
+class SatuSehat extends Base
 {
-    use Auth, Organization;
+    use Auth, Organization, Location;
 
     protected $organizationID;
 
@@ -31,8 +33,12 @@ class SatuSehat
 
     protected $mapping;
 
+    protected $data = [];
+
     public function __construct($organizationID, $clientKey, $secretKey, $env = 'development')
     {
+        $this->method = isMethod();
+
         $this->organizationID = $organizationID;
 
         $this->clientKey = $clientKey;
@@ -79,8 +85,31 @@ class SatuSehat
         }
 
         $this->token = $token;
-        $this->headers = ["Authorization: Bearer {$this->token}", 'Content-Type: application/json'];
+        $this->headers = [
+            "Authorization: Bearer {$this->token}",
+            ($this->method !== 'PATCH') ? 'Content-Type: application/json' : 'Content-Type: application/json-patch+json'
+        ];
         return $this;
+    }
+
+    public function get($key, $search = false, $column = false)
+    {
+        $data = $this->data;
+
+        foreach (explode('.', $key) as $key) {
+            $data = isset($data[$key]) ? $data[$key] : null;
+        }
+
+        if (is_array($data) && $search && is_array($search) && $column) {
+            foreach ($search as $key => $value) {
+                $index = array_search($value, array_column($data, $key));
+                $data = $index !== false ? $data[$index] : [];
+            }
+
+            return isset($data[$column]) ? $data[$column] : null;
+        }
+
+        return $data;
     }
 
     public function getToken()
@@ -120,6 +149,6 @@ class SatuSehat
             throw new \Exception($data['Error'], 400);
         }
 
-        return $this->mapping ? $this->mapping->response($data) : $data;
+        return $this->data = $this->mapping ? $this->mapping->response($data) : $data;
     }
 }

@@ -109,6 +109,9 @@ class Datatable
             $data = $db->query(trim("SELECT * FROM {$query} LIMIT {$this->limit} OFFSET {$this->offset}"), $bindings);
             $this->data = $data->get();
         } else {
+            $data = (empty($data) || !is_array($data)) ? [] : $data;
+            $data = is_array(end($data)) ? $data : (empty($data) ? [] : [$data]);
+
             $result = $data;
             $isFiltered = false;
 
@@ -188,7 +191,7 @@ class Datatable
         return $this;
     }
 
-    public function response($code = 200, $gzip = false, $sanitize = false, $except_sanitize = [])
+    public function response()
     {
         $this->editColumns = array_filter($this->editColumns);
 
@@ -225,6 +228,6 @@ class Datatable
             'data'          => $data
         ], (!empty($this->columns) ? ['columns' => array_values($columns)] : []));
 
-        return response($data, $code, $gzip, $sanitize, $except_sanitize);
+        return $data;
     }
 }

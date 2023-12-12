@@ -22,7 +22,7 @@ class Update extends Base
         switch ($this->method) {
             case 'PUT':
                 $IHS = $this->mapping($data, 'IHS');
-                $HISParent = $this->mapping($data, 'HISParent');
+                $IHSName = $this->mapping($data, 'IHSName');
 
                 $type = $this->mapping($data, 'type');
 
@@ -51,15 +51,16 @@ class Update extends Base
                 $data = [
                     'id' => $this->mapping($data, 'id', true),
                     'identifier' => [$this->getDataType('Identifier', $this->mapping([
+                        'use' => 'official',
                         'system' => is_null($IHS) ? null : "http://sys-ids.kemkes.go.id/organization/{$IHS}",
-                        'value' => is_null($name) || is_null($HISParent) ? null : "{$name} {$HISParent}",
+                        'value' => is_null($name) || is_null($IHSName) ? $name : "{$name} {$IHSName}",
                     ]))],
-                    'type' => $this->mapping($this->getDataType('CodeableConcept', $this->mapping([
+                    'type' => $this->mapping([$this->getDataType('CodeableConcept', $this->mapping([
                         'coding' => [[
                             'system' => is_null($type) ? null : 'http://terminology.hl7.org/CodeSystem/organization-type',
                             'code' => is_null($type) ? null : $type
                         ]]
-                    ]), 'OrganizationType')),
+                    ]), 'OrganizationType')]),
                     'active' => is_null($active) ? null : $active,
                     'name' => is_null($name) ? null : $name,
                     'telecom' => $this->mapping(array_filter(array_merge(
@@ -69,7 +70,7 @@ class Update extends Base
                     )), null, function ($telecom) {
                         return $this->getDataType('ContactPoint', $telecom);
                     }),
-                    'address' => $this->getDataType('Address', $this->mapping([
+                    'address' => !empty(array_filter([$line, $city, $district, $state, $postalCode, $provinceCode, $cityCode, $districtCode, $villageCode])) ? [$this->getDataType('Address', $this->mapping([
                         'use' => 'work',
                         'line' => is_null($line) ? [] : [$line],
                         'city' => is_null($city) ? null : $city,
@@ -86,8 +87,8 @@ class Update extends Base
                                 [is_null($villageCode) ? [] : ['url' => 'village', 'valueCode' => $villageCode]]
                             ))))
                         ]] : []
-                    ])),
-                    'partOf' => $this->getDataType('Reference', $this->mapping(['reference' => $partOf, 'display' => $partOfDisplay]), 'Location'),
+                    ]))] : [],
+                    'partOf' => $this->getDataType('Reference', $this->mapping(['reference' => $partOf, 'display' => $partOfDisplay]), 'Organization'),
                 ];
 
                 return array_merge(array_filter([
@@ -121,7 +122,10 @@ class Update extends Base
         $telecom = $this->getResponse($data, 'telecom');
         $telecom = is_null($telecom) ? [] : $telecom;
 
-        $partOf = array_filter(explode('/', $this->getResponse($data, 'partOf.reference')));
+        $partOf = $this->getResponse($data, 'partOf.reference');
+        $partOf = is_null($partOf) ? $partOf : array_filter(explode('/', $partOf));
+        $partOf = is_null($partOf) ? $partOf : end($partOf);
+
         $address = $this->mapping($this->getResponse($data, 'address'), null, function ($address) {
             return [
                 'country'       => $this->getResponse($address, 'country'),
@@ -131,7 +135,7 @@ class Update extends Base
                 'cityCode'      => $this->getResponse($address, 'extension.0.extension', ['url' => 'city'], 'valueCode'),
                 'districtCode'  => $this->getResponse($address, 'extension.0.extension', ['url' => 'district'], 'valueCode'),
                 'villageCode'   => $this->getResponse($address, 'extension.0.extension', ['url' => 'village'], 'valueCode'),
-                'postalCode'    => $this->getResponse($address, 'postalCode'),
+                'postalCode'    => $this->getResponse($address, 'postalCode')
             ];
         });
 
@@ -144,7 +148,7 @@ class Update extends Base
             'type'          => $this->getResponse($data, 'type.0.coding.0.display'),
             'telecom'       => array_column($telecom, 'value', 'system'),
             'address'       => $address,
-            'partOf'        => end($partOf),
+            'partOf'        => $partOf
         ];
     }
 }

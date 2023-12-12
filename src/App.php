@@ -159,7 +159,7 @@ class App extends Bridge
     private function handleError($type, $message, $code, $file, $line, $trace = [])
     {
         if (env('APP_DEBUG', true)) {
-            response([
+            $response = response([
                 'os'        => PHP_OS,
                 'version'   => 'PHP ' . PHP_VERSION,
                 'type'      => $type,
@@ -170,13 +170,15 @@ class App extends Bridge
                 'trace'     => $trace
             ], $code, true);
         } else {
-            response([
+            $response = response([
                 'code'      => 500,
                 'message'   => 'Internal Server Error',
             ], 500, true);
         }
 
-        exit;
+        return print($response);
+
+        exit(0);
     }
 
     private function middleware(\Closure $action)
@@ -198,11 +200,12 @@ class App extends Bridge
                 }
             }
 
-            if (!$middleware instanceof \Closure) $action = $middleware;
+            if (!($middleware instanceof \Closure)) $action = $middleware;
             else $action = $action();
 
-            if (is_array($action)) return response($action);
-            return print($action);
+            return print(is_array($action) ? response($action) : $action);
+
+            exit(1);
         };
 
         return $next($middlewares);

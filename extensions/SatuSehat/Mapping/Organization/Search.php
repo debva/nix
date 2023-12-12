@@ -11,7 +11,10 @@ class Search extends Base
         $telecom = $this->getResponse($data, 'telecom');
         $telecom = is_null($telecom) ? [] : $telecom;
 
-        $partOf = array_filter(explode('/', $this->getResponse($data, 'partOf.reference')));
+        $partOf = $this->getResponse($data, 'partOf.reference');
+        $partOf = is_null($partOf) ? $partOf : array_filter(explode('/', $partOf));
+        $partOf = is_null($partOf) ? $partOf : end($partOf);
+
         $address = $this->mapping($this->getResponse($data, 'address'), null, function ($address) {
             return [
                 'country'       => $this->getResponse($address, 'country'),
@@ -21,7 +24,7 @@ class Search extends Base
                 'cityCode'      => $this->getResponse($address, 'extension.0.extension', ['url' => 'city'], 'valueCode'),
                 'districtCode'  => $this->getResponse($address, 'extension.0.extension', ['url' => 'district'], 'valueCode'),
                 'villageCode'   => $this->getResponse($address, 'extension.0.extension', ['url' => 'village'], 'valueCode'),
-                'postalCode'    => $this->getResponse($address, 'postalCode'),
+                'postalCode'    => $this->getResponse($address, 'postalCode')
             ];
         });
 
@@ -34,7 +37,7 @@ class Search extends Base
             'type'          => $this->getResponse($data, 'type.0.coding.0.display'),
             'telecom'       => array_column($telecom, 'value', 'system'),
             'address'       => $address,
-            'partOf'        => end($partOf),
+            'partOf'        => $partOf
         ];
     }
 

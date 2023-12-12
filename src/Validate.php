@@ -95,8 +95,8 @@ class Validate
         }
 
         if (!empty($errors)) {
-            response(['validation' => $errors], 400);
-            exit;
+            print(response(['validation' => $errors], 400));
+            exit(0);
         }
 
         $request = request(array_keys($attributeWithRule));

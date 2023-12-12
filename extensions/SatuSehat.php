@@ -21,6 +21,8 @@ class SatuSehat extends Base
 
     protected $env;
 
+    protected $verbose;
+
     protected $authURL;
 
     protected $baseURL;
@@ -35,7 +37,7 @@ class SatuSehat extends Base
 
     protected $data = [];
 
-    public function __construct($organizationID, $clientKey, $secretKey, $env = 'development')
+    public function __construct($organizationID, $clientKey, $secretKey, $env = 'development', $verbose = true)
     {
         $this->method = isMethod();
 
@@ -47,7 +49,9 @@ class SatuSehat extends Base
 
         $this->env = $env;
 
-        switch ($env) {
+        $this->verbose = $verbose;
+
+        switch (strtolower($env)) {
             case 'development':
                 $this->authURL = 'https://api-satusehat-dev.dto.kemkes.go.id/oauth2/v1';
                 $this->baseURL = 'https://api-satusehat-dev.dto.kemkes.go.id/fhir-r4/v1';
@@ -65,6 +69,9 @@ class SatuSehat extends Base
                 $this->baseURL = 'https://api-satusehat.kemkes.go.id/fhir-r4/v1';
                 $this->consentURL = 'https://api-satusehat.dto.kemkes.go.id/consent/v1';
                 break;
+
+            default:
+                throw new \Exception('Environment not supported!');
         }
     }
 
@@ -122,33 +129,45 @@ class SatuSehat extends Base
         $data = is_string($data) ? json_decode($data, true) : $data;
 
         if (is_null($data)) {
-            throw new \Exception('Unable to connect to Satu Sehat server');
+            $code = 500;
+            $error = 'Unable to connect to Satu Sehat server';
         }
 
         if (isset($data['issue']) && count($data['issue']) > 0) {
-            return [
-                'errors' => array_map(function ($issue) {
-                    if (isset($issue['diagnostics'])) {
-                        throw new \Exception($issue['diagnostics'], 400);
-                    }
+            foreach ($data['issue'] as $issue) {
+                if (isset($issue['diagnostics'])) {
+                    $code = 400;
+                    $error = $issue['diagnostics'];
+                }
 
-                    if (isset($issue['details']['text'])) {
-                        throw new \Exception($issue['details']['text'], 400);
-                    }
+                if (isset($issue['details']['text'])) {
+                    $code = 400;
+                    $error = $issue['details']['text'];
+                }
 
-                    throw new \Exception('Unknown issue!', 404);
-                }, $data['issue'])
-            ];
+                $code = 404;
+                $error = 'Unknown issue!';
+            }
         }
 
         if (isset($data['fault']['faultstring'])) {
-            throw new \Exception($data['fault']['faultstring'], 400);
+            $code = 400;
+            $error = $data['fault']['faultstring'];
         }
 
         if (isset($data['Error'])) {
-            throw new \Exception($data['Error'], 400);
+            $code = 400;
+            $error = $data['Error'];
         }
 
-        return $this->data = $this->mapping ? $this->mapping->response($data) : $data;
+        if (isset($error, $code)) {
+            if ($this->verbose) {
+                throw new \Exception($error, $code);
+            } else {
+                $data = [];
+            }
+        }
+
+        return $this->data = empty($data) ? [] : ($this->mapping ? $this->mapping->response($data) : $data);
     }
 }

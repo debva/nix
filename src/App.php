@@ -86,7 +86,7 @@ class App extends Bridge
             throw new \Exception('Route not found!', 404);
         }
 
-        $basePath = trim(implode(DIRECTORY_SEPARATOR, [basePath(), $this->appPath, $this->routePath, implode(DIRECTORY_SEPARATOR, $requestPath)]), '\/');
+        $basePath = rtrim(implode(DIRECTORY_SEPARATOR, [basePath(), $this->appPath, $this->routePath, implode(DIRECTORY_SEPARATOR, $requestPath)]), '\/');
         $actionPath = implode('.', [$basePath, 'php']);
 
         if (!file_exists($actionPath)) {

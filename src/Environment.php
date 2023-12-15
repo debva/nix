@@ -28,14 +28,14 @@ abstract class Environment
                 $line = trim($line);
 
                 if (!$line || strpos($line, '#') === 0) continue;
-                list($name, $value) = explode('=', $line, 2);
+                list($key, $value) = explode('=', $line, 2);
 
-                $name = trim($name);
+                $key = trim($key);
                 $value = trim($value, "\"");
 
-                if (!array_key_exists($name, $_ENV)) {
-                    putenv(sprintf('%s=%s', $name, $value));
-                    $_ENV[$name] = $value;
+                if (!array_key_exists($key, $_ENV)) {
+                    putenv(sprintf('%s=%s', $key, $value));
+                    $_ENV[$key] = $value;
                 }
             }
         }

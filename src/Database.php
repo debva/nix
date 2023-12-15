@@ -312,6 +312,9 @@ class Database
 
     public function query($query, array $bindings = [])
     {
+        $this->query = null;
+        $this->bindings = $this->statement = [];
+
         if (is_array($query)) {
             if (empty($query)) {
                 $this->query = $this->bindings = $this->statement = [];
@@ -319,7 +322,7 @@ class Database
             foreach ($query as $q) {
                 if (isset($q['query'])) {
                     $q['bindings'] = isset($q['bindings']) ? $q['bindings'] : [];
-                    $this->statement[] = $this->getConnection()->prepare($this->sanitizeQuery($q['query']));;
+                    $this->statement[] = $this->getConnection()->prepare($this->sanitizeQuery($q['query']));
                     $this->query[] = $this->sanitizeQuery($q['query']);
                     $this->bindings[] = $this->sanitizeBindings(empty($q['bindings']) ? [] : $q['bindings']);
                 }

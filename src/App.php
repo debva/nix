@@ -33,6 +33,8 @@ class App extends Bridge
                 $this->isError = true;
                 $this->handleError('Exception', $e->getMessage(), $e->getCode(), $e->getFile(), $e->getLine(), $e->getTrace());
             }
+
+            exit(0);
         });
 
         set_error_handler(function ($errno, $message, $file, $line) {
@@ -40,6 +42,8 @@ class App extends Bridge
                 $this->isError = true;
                 $this->handleError('Error', $message, 500, $file, $line);
             }
+
+            exit(0);
         });
 
         register_shutdown_function(function () {
@@ -75,19 +79,6 @@ class App extends Bridge
     {
         $requestPath = array_filter(explode('/', $this->requestPath));
 
-        if (startsWith($queue = reset($requestPath), '___queue')) {
-            if (endsWith($queue, env('QUEUE_ID', 'nix'))) {
-                $request = request(['username', 'password']);
-                if (
-                    $request['username'] == env('QUEUE_USER', '') &&
-                    $request['password'] == env('QUEUE_PASSWORD', '')
-                ) {
-                    $queue = nix('queue');
-                    return response($queue());
-                }
-            }
-        }
-
         if (
             in_array(strtoupper(end($requestPath)), array_merge($this->httpMethod, ['INDEX'])) ||
             preg_match('/^(' . implode('|', $this->httpMethod) . ')/i', end($requestPath))
@@ -95,7 +86,7 @@ class App extends Bridge
             throw new \Exception('Route not found!', 404);
         }
 
-        $basePath = implode(DIRECTORY_SEPARATOR, [basePath(), $this->appPath, $this->routePath, implode(DIRECTORY_SEPARATOR, $requestPath)]);
+        $basePath = trim(implode(DIRECTORY_SEPARATOR, [basePath(), $this->appPath, $this->routePath, implode(DIRECTORY_SEPARATOR, $requestPath)]), '\/');
         $actionPath = implode('.', [$basePath, 'php']);
 
         if (!file_exists($actionPath)) {
@@ -104,7 +95,10 @@ class App extends Bridge
             if (!file_exists($actionPath) && empty($requestPath)) {
                 $actionPath = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', $this->routePath, 'welcome.php']);
                 $action = require_once($actionPath);
-                return response($action());
+
+                print(response($action()));
+
+                exit(1);
             }
 
             if (!file_exists($actionPath)) {
@@ -176,7 +170,7 @@ class App extends Bridge
             ], 500, true);
         }
 
-        return print($response);
+        print($response);
 
         exit(0);
     }
@@ -203,7 +197,7 @@ class App extends Bridge
             if (!($middleware instanceof \Closure)) $action = $middleware;
             else $action = $action();
 
-            return print(is_array($action) ? response($action) : $action);
+            print(is_array($action) ? response($action) : $action);
 
             exit(1);
         };

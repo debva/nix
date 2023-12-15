@@ -85,7 +85,7 @@ class InaCBGs
         $this->key = $key;
     }
 
-    public function __invoke($payload, $withErrorCheck = false)
+    public function __invoke($payload, $verbose = false)
     {
         $payload = $this->encrypt($payload);
 
@@ -99,7 +99,7 @@ class InaCBGs
 
         $error = (is_array($response) && isset($response['metadata']['error_no'])) ? $response['metadata']['error_no'] : false;
 
-        if (is_object($response) || ($withErrorCheck && is_string($error) && in_array($error, array_keys($this->errors)))) {
+        if (is_object($response) || ($verbose && is_string($error) && in_array($error, array_keys($this->errors)))) {
             throw new \Exception($error ? $this->errors[$error] : 'Unable to connect to InaCBGs server!', 500);
         }
 

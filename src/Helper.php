@@ -23,6 +23,17 @@ if (!function_exists('getallheaders')) {
     }
 }
 
+if (!function_exists('nix')) {
+    function nix($class, ...$args)
+    {
+        if (!isset($GLOBALS['_NIX_APP'])) {
+            $GLOBALS['_NIX_APP'] = new Nix;
+        }
+
+        return $GLOBALS['_NIX_APP']($class, ...$args);
+    }
+}
+
 if (!function_exists('env')) {
     function env($key, $default = null)
     {
@@ -43,14 +54,31 @@ if (!function_exists('env')) {
     }
 }
 
-if (!function_exists('nix')) {
-    function nix($class, ...$args)
+if (!function_exists('loadEnv')) {
+    function loadEnv($env)
     {
-        if (!isset($GLOBALS['_NIX_APP'])) {
-            $GLOBALS['_NIX_APP'] = new Nix;
+        $envPath = storage()->basePath($env);
+
+        if (!file_exists($envPath)) {
+            return false;
         }
 
-        return $GLOBALS['_NIX_APP']($class, ...$args);
+        $lines = preg_split('/\r\n|\r|\n/', file_get_contents($envPath));
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+
+            if (!$line || strpos($line, '#') === 0) continue;
+            list($key, $value) = explode('=', $line, 2);
+
+            $key = trim($key);
+            $value = trim($value, "\"");
+
+            putenv(sprintf('%s=%s', $key, $value));
+            $_ENV[$key] = $value;
+        }
+
+        return true;
     }
 }
 

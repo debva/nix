@@ -2,8 +2,6 @@
 
 namespace Debva\Nix;
 
-use Exception;
-
 class App extends Bridge
 {
     protected $appPath = 'app';
@@ -18,7 +16,7 @@ class App extends Bridge
 
     protected $requestMethod;
 
-    protected $isError = false;
+    protected $verbose = true;
 
     protected $httpMethod = ['__GET', '__POST', '__PUT', '__PATCH', '__DELETE'];
 
@@ -29,8 +27,8 @@ class App extends Bridge
         ini_set('display_errors', 'Off');
 
         set_exception_handler(function ($e) {
-            if (!$this->isError) {
-                $this->isError = true;
+            if ($this->verbose) {
+                $this->verbose = false;
                 $this->handleError('Exception', $e->getMessage(), $e->getCode(), $e->getFile(), $e->getLine(), $e->getTrace());
             }
 
@@ -38,8 +36,8 @@ class App extends Bridge
         });
 
         set_error_handler(function ($errno, $message, $file, $line) {
-            if (!$this->isError) {
-                $this->isError = true;
+            if ($this->verbose) {
+                $this->verbose = false;
                 $this->handleError('Error', $message, 500, $file, $line);
             }
 
@@ -47,8 +45,8 @@ class App extends Bridge
         });
 
         register_shutdown_function(function () {
-            if (!$this->isError) {
-                $this->isError = true;
+            if ($this->verbose) {
+                $this->verbose = false;
                 $error = error_get_last();
 
                 if ($error !== null && env('APP_DEBUG')) {
@@ -194,9 +192,11 @@ class App extends Bridge
                 }
             }
 
+
             if (!($middleware instanceof \Closure)) $action = $middleware;
             else $action = $action();
 
+            $this->verbose = false;
             print(is_array($action) ? response($action) : $action);
 
             exit(1);

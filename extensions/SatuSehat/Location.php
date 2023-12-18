@@ -31,6 +31,7 @@ trait Location
     {
         $this->mapping = new Search;
 
+        $search = (is_array($search) && isset($search['identifier'])) ? ['identifier' => "http://sys-ids.kemkes.go.id/location/{$search['identifier']}"] : $search;
         $search = is_array($search) ? '?' . http_build_query($search) : $search;
 
         $response = http()->get("{$this->baseURL}/Location/{$search}", $this->headers);

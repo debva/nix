@@ -6,10 +6,11 @@ use Debva\Nix\Extension\SatuSehat\Auth;
 use Debva\Nix\Extension\SatuSehat\Base;
 use Debva\Nix\Extension\SatuSehat\Location;
 use Debva\Nix\Extension\SatuSehat\Organization;
+use Debva\Nix\Extension\SatuSehat\Practitioner;
 
 class SatuSehat extends Base
 {
-    use Auth, Organization, Location;
+    use Auth, Practitioner, Organization, Location;
 
     protected $organizationID;
 
@@ -138,15 +139,13 @@ class SatuSehat extends Base
                 if (isset($issue['diagnostics'])) {
                     $code = 400;
                     $error = $issue['diagnostics'];
-                }
-
-                if (isset($issue['details']['text'])) {
+                } else if (isset($issue['details']['text'])) {
                     $code = 400;
                     $error = $issue['details']['text'];
+                } else {
+                    $code = 404;
+                    $error = 'Unknown issue!';
                 }
-
-                $code = 404;
-                $error = 'Unknown issue!';
             }
         }
 

@@ -2,7 +2,7 @@
 
 namespace Debva\Nix;
 
-class Validate
+class Validator
 {
     protected $request;
 
@@ -79,7 +79,7 @@ class Validate
                             : null)
                     );
 
-                if ($validate) {
+                if (is_string($validate)) {
                     $message = in_array($name, array_keys($this->messages)) ? $this->messages[$name] : $validate;
                     $message = str_replace(':attribute', $attribute, $message);
                     foreach ($parameter as $index => $value) {

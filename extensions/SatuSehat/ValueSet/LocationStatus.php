@@ -8,19 +8,19 @@ class LocationStatus
     {
         return [
             'active' => [
-                'Display'           => 'Active',
-                'Definition'        => 'The location is operational.',
-                'Canonical Status'  => '~active'
+                'display'           => 'Active',
+                'definition'        => 'The location is operational.',
+                'canonical_status'  => '~active'
             ],
             'suspended' => [
-                'Display'           => 'Suspended',
-                'Definition'        => 'The location is temporarily closed.',
-                'Canonical Status'  => '~suspended'
+                'display'           => 'Suspended',
+                'definition'        => 'The location is temporarily closed.',
+                'canonical_status'  => '~suspended'
             ],
             'inactive' => [
-                'Display'           => 'Inactive',
-                'Definition'        => 'The location is no longer used.',
-                'Canonical Status'  => '~inactive'
+                'display'           => 'Inactive',
+                'definition'        => 'The location is no longer used.',
+                'canonical_status'  => '~inactive'
             ]
         ];
     }

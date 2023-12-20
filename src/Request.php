@@ -27,13 +27,19 @@ class Request
                 foreach ($keys as $key) {
                     $result = [];
                     $req = $request;
+                    $wildcard = false;
                     $arrayRef = &$result;
 
                     foreach (explode('.', $key) as $k) {
                         $arrayRef = &$arrayRef[$k];
-                        $req = isset($req[$k])
-                            ? $req[$k]
-                            : (!is_null($default) ? $default : null);
+                        if ($k === '*' || $wildcard) {
+                            $req = $wildcard && is_array($req) ? array_map(function ($data) use ($k) {
+                                return isset($data[$k]) ? $data[$k] : null;
+                            }, $req) : $req;
+                            $wildcard = $k === '*' ? true : false;
+                        } else {
+                            $req = isset($req[$k]) ? $req[$k] : (!is_null($default) ? $default : null);
+                        }
                     }
 
                     $arrayRef = $req;
@@ -51,11 +57,16 @@ class Request
                 return $results;
             }
 
-            $keys = explode('.', $keys);
-            foreach ($keys as $key) {
-                $request = isset($request[$key])
-                    ? $request[$key]
-                    : (!is_null($default) ? $default : null);
+            $wildcard = false;
+            foreach (explode('.', $keys) as $key) {
+                if ($key === '*' || $wildcard) {
+                    $request = $wildcard && is_array($request) ? array_map(function ($data) use ($key) {
+                        return isset($data[$key]) ? $data[$key] : null;
+                    }, $request) : $request;
+                    $wildcard = $key === '*' ? true : false;
+                } else {
+                    $request = isset($request[$key]) ? $request[$key] : (!is_null($default) ? $default : null);
+                }
             }
         }
 

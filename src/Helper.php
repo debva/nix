@@ -224,7 +224,7 @@ if (!function_exists('isMethod')) {
 if (!function_exists('validate')) {
     function validate($rules, $options = [])
     {
-        $validate = nix('validate');
+        $validate = nix('validator');
         return $validate($rules, $options);
     }
 }

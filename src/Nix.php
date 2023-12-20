@@ -28,7 +28,7 @@ class Nix
             'storage'   => Storage::class,
             'telegram'  => Telegram::class,
             'userAgent' => UserAgent::class,
-            'validate'  => Validate::class
+            'validator' => Validator::class
         ];
 
         if (!in_array($class, array_keys($classes))) {

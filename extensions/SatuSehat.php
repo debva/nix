@@ -6,11 +6,12 @@ use Debva\Nix\Extension\SatuSehat\Auth;
 use Debva\Nix\Extension\SatuSehat\Base;
 use Debva\Nix\Extension\SatuSehat\Location;
 use Debva\Nix\Extension\SatuSehat\Organization;
+use Debva\Nix\Extension\SatuSehat\Patient;
 use Debva\Nix\Extension\SatuSehat\Practitioner;
 
 class SatuSehat extends Base
 {
-    use Auth, Practitioner, Organization, Location;
+    use Auth, Practitioner, Organization, Location, Patient;
 
     protected $organizationID;
 

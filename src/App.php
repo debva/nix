@@ -163,9 +163,9 @@ class App extends Bridge
             ], $code, true);
         } else {
             $response = response([
-                'code'      => 500,
-                'message'   => 'Internal Server Error',
-            ], 500, true);
+                'code'      => $code,
+                'message'   => $message,
+            ], $code, true);
         }
 
         print($response);
@@ -191,7 +191,6 @@ class App extends Bridge
                     return $next($middlewares);
                 }
             }
-
 
             if (!($middleware instanceof \Closure)) $action = $middleware;
             else $action = $action();

@@ -140,7 +140,7 @@ class Update extends Base
         });
 
         return [
-            'resourceType'  => 'Organization',
+            'resourceType'  => $this->getResponse($data, 'resourceType'),
             'id'            => $this->getResponse($data, 'id'),
             'active'        => $this->getResponse($data, 'active'),
             'name'          => $this->getResponse($data, 'name'),

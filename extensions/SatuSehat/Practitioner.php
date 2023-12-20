@@ -12,7 +12,7 @@ trait Practitioner
         return $this;
     }
 
-    public function search($search)
+    public function practitionerSearch($search)
     {
         $this->mapping = new Search;
 

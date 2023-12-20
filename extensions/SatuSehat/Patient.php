@@ -2,34 +2,24 @@
 
 namespace Debva\Nix\Extension\SatuSehat;
 
-trait Practitioner
+use Debva\Nix\Extension\SatuSehat\Mapping\Patient\Search;
+
+trait Patient
 {
-    public function practitionerByNIK($nik)
+    public function patient()
     {
-        $response = http()->get(
-            "{$this->baseURL}/Practitioner?identifier=https://fhir.kemkes.go.id/id/nik|{$nik}",
-            ["Authorization: Bearer {$this->token}"]
-        );
-
-        return $this->response($response);
+        $this->module = __FUNCTION__;
+        return $this;
     }
 
-    public function practitionerByNameGenderBirthdate($name, $gender, $birthdate)
+    public function patientSearch($search)
     {
-        $response = http()->get(
-            "{$this->baseURL}/Practitioner?name={$name}&gender={$gender}&birthdate={$birthdate}",
-            ["Authorization: Bearer {$this->token}"]
-        );
+        $this->mapping = new Search;
 
-        return $this->response($response);
-    }
+        $search = (is_array($search) && isset($search['identifier'])) ? ['identifier' => "https://fhir.kemkes.go.id/id/nik|{$search['identifier']}"] : $search;
+        $search = is_array($search) ? '?' . http_build_query($search) : $search;
 
-    public function practitionerByID($id)
-    {
-        $response = http()->get(
-            "{$this->baseURL}/Practitioner/{$id}",
-            ["Authorization: Bearer {$this->token}"]
-        );
+        $response = http()->get("{$this->baseURL}/Patient/{$search}", $this->headers);
 
         return $this->response($response);
     }

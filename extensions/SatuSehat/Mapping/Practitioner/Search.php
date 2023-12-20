@@ -11,18 +11,26 @@ class Search extends Base
         $telecom = $this->getResponse($data, 'telecom');
         $telecom = is_null($telecom) ? [] : $telecom;
 
-        $identifier = $this->mapping($this->getResponse($data, 'identifier'), null, function ($identifier) {
+        $identifier = $this->mapping($data, 'identifier', function ($identifier) {
+            $system = explode('/', isset($identifier['system']) ? $identifier['system'] : '');
+            $system = end($system);
+
+            if (!empty($system)) {
+                return [
+                    'system'    => $system,
+                    'value'     => $this->getResponse($identifier, 'value')
+                ];
+            }
+        });
+
+        $qualification = $this->mapping($data, 'qualification', function ($qualification) {
             return [
-                'system'    => $this->getResponse($identifier, 'system'),
-                'value'     => $this->getResponse($identifier, 'value')
+                'display'   => $this->getResponse($qualification, 'code.coding.0.display'),
+                'value'     => $this->getResponse($qualification, 'identifier.0.value')
             ];
         });
 
-        $qualification = $this->mapping($this->getResponse($data, 'qualification'), null, function ($qualification) {
-            return $this->getResponse($qualification, 'identifier');
-        });
-
-        $address = $this->mapping($this->getResponse($data, 'address'), null, function ($address) {
+        $address = $this->mapping($data, 'address', function ($address) {
             return [
                 'country'       => $this->getResponse($address, 'country'),
                 'city'          => $this->getResponse($address, 'city'),
@@ -31,6 +39,8 @@ class Search extends Base
                 'cityCode'      => $this->getResponse($address, 'extension.0.extension', ['url' => 'city'], 'valueCode'),
                 'districtCode'  => $this->getResponse($address, 'extension.0.extension', ['url' => 'district'], 'valueCode'),
                 'villageCode'   => $this->getResponse($address, 'extension.0.extension', ['url' => 'village'], 'valueCode'),
+                'rw'            => $this->getResponse($address, 'extension.0.extension', ['url' => 'rw'], 'valueCode'),
+                'rt'            => $this->getResponse($address, 'extension.0.extension', ['url' => 'rt'], 'valueCode'),
                 'postalCode'    => $this->getResponse($address, 'postalCode')
             ];
         });
@@ -41,9 +51,9 @@ class Search extends Base
             'identifier'    => $identifier,
             'gender'        => $this->getResponse($data, 'gender'),
             'birthDate'     => $this->getResponse($data, 'birthDate'),
-            'name'          => $this->getResponse($data, 'name.0.text'),
+            'name'          => $this->getResponse($data, 'name', ['use' => 'official'], 'text'),
             'telecom'       => array_column($telecom, 'value', 'system'),
-            'qualification' => is_array($qualification) ? array_merge(...$qualification) : $qualification,
+            'qualification' => $qualification,
             'address'       => $address,
         ];
     }

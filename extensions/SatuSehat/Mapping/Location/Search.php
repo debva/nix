@@ -31,7 +31,7 @@ class Search extends Base
         ];
 
         return [
-            'resourceType'          => 'Location',
+            'resourceType'          => $this->getResponse($data, 'resourceType'),
             'id'                    => $this->getResponse($data, 'id'),
             'code'                  => $this->getResponse($data, 'identifier.0.value'),
             'status'                => $this->getResponse($data, 'status'),

@@ -29,7 +29,7 @@ class Uuid
             $guids[] = $this->uuidFromBytesAndVersion($this->timeGenerator(), 1);
         }
 
-        return count($guids) > 1 ? $guids : reset($guids);
+        return count($guids) > 1 ? array_unique($guids) : reset($guids);
     }
 
     public function v4($generate = 1)
@@ -37,10 +37,10 @@ class Uuid
         $guids = [];
 
         for ($i = 0; $i < $generate; $i++) {
-            $guids[] = $this->uuidFromBytesAndVersion($this->randomGenerator(16), 1);
+            $guids[] = $this->uuidFromBytesAndVersion($this->randomGenerator(16), 4);
         }
 
-        return count($guids) > 1 ? $guids : reset($guids);
+        return count($guids) > 1 ? array_unique($guids) : reset($guids);
     }
 
     protected function getNodeFromSystem()

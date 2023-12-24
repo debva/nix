@@ -175,6 +175,10 @@ class Languages
                 'display'   => 'Croatian (Croatia)',
                 'system'    => 'urn:ietf:bcp:47',
             ],
+            'id-ID' => [
+                'display'   => 'Indonesian',
+                'system'    => 'urn:ietf:bcp:47',
+            ],
             'is' => [
                 'display'   => 'Icelandic',
                 'system'    => 'urn:ietf:bcp:47',

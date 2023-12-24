@@ -209,6 +209,13 @@ if (!function_exists('route')) {
     }
 }
 
+if (!function_exists('guuid')) {
+    function guuid()
+    {
+        return nix('uuid');
+    }
+}
+
 if (!function_exists('isMethod')) {
     function isMethod(...$method)
     {
@@ -257,24 +264,5 @@ if (!function_exists('endsWith')) {
         }
 
         return substr($haystack, -strlen($needle)) === $needle;
-    }
-}
-
-if (!function_exists('uuidv4')) {
-    function uuidv4()
-    {
-        $data = uniqid(mt_rand(), true);
-        $data .= microtime(true) * 10000;
-        $data .= getmypid();
-        $uuid = md5($data);
-
-        return sprintf(
-            '%08s-%04s-%04s-%04s-%12s',
-            substr($uuid, 0, 8),
-            substr($uuid, 8, 4),
-            substr($uuid, 12, 4),
-            substr($uuid, 16, 4),
-            substr($uuid, 20, 12)
-        );
     }
 }

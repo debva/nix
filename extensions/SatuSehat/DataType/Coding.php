@@ -8,10 +8,12 @@ class Coding extends Base
 {
     public function __invoke($data, $valueSet)
     {
+        $system = $this->getResponse($data, 'system');
+        $code = $this->getResponse($data, 'code');
         return array_filter([
-            'system' => isset($data['system']) ? $data['system'] : null,
-            'code' => isset($data['code']) ? $data['code'] : null,
-            'display' => isset($data['code']) ? $this->getValueSet($valueSet, $data['code'], 'display') : null
+            'system' => is_null($system) ? $this->getValueSet($valueSet, $code, 'system') : $system,
+            'code' => $code,
+            'display' => $this->getValueSet($valueSet, $code, 'display'),
         ]);
     }
 }

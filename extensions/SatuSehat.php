@@ -151,13 +151,18 @@ class SatuSehat extends Base
         }
 
         if (isset($data['fault']['faultstring'])) {
-            $code = 400;
+            $code = 500;
             $error = $data['fault']['faultstring'];
         }
 
         if (isset($data['Error'])) {
-            $code = 400;
+            $code = 500;
             $error = $data['Error'];
+        }
+
+        if (isset($data['success']) && $data['success'] === false && isset($data['message'])) {
+            $code = 403;
+            $error = $data['message'];
         }
 
         if (isset($error, $code)) {

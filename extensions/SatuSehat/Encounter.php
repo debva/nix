@@ -2,16 +2,29 @@
 
 namespace Debva\Nix\Extension\SatuSehat;
 
+use Debva\Nix\Extension\SatuSehat\Mapping\Encounter\Create;
+
 trait Encounter
 {
+    public function patient()
+    {
+        $this->module = __FUNCTION__;
+        return $this;
+    }
+
     public function encounterCreate($data)
     {
-        $response = http()->get(
-            "{$this->baseURL}/Encounter",
-            ["Authorization: Bearer {$this->token}"],
-            $data
-        );
+        $this->mapping = new Create;
 
-        return $this->response($response);
+        print(response($this->mapping->body($data)));
+        exit;
+
+        // $response = http()->post(
+        //     "{$this->baseURL}/Encounter",
+        //     $this->headers,
+        //     $this->mapping->body($data)
+        // );
+
+        // return $this->response($response);
     }
 }

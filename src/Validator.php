@@ -150,6 +150,13 @@ class Validator
         }
     }
 
+    public function ruleBoolean($value)
+    {
+        if (!is_bool($value)) {
+            return 'The :attribute field must be a boolean';
+        }
+    }
+
     public function ruleArray($value)
     {
         if (!is_array($value)) {

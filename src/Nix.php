@@ -28,14 +28,15 @@ class Nix
             'storage'   => Storage::class,
             'telegram'  => Telegram::class,
             'userAgent' => UserAgent::class,
-            'validator' => Validator::class
+            'validator' => Validator::class,
+            'uuid'      => Uuid::class,
         ];
 
         if (!in_array($class, array_keys($classes))) {
             throw new \Exception("Class {$class} not found!");
         }
 
-        if (in_array($class, ['auth', 'crypt', 'document', 'ext', 'http', 'task', 'request', 'response', 'route', 'storage'])) {
+        if (in_array($class, ['auth', 'crypt', 'document', 'ext', 'http', 'task', 'request', 'response', 'route', 'storage', 'uuid'])) {
             return isset($this->cacheClass[$class])
                 ? $this->cacheClass[$class]
                 : $this->cacheClass[$class] = new $classes[$class](...$args);

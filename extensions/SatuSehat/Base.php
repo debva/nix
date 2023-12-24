@@ -8,7 +8,7 @@ class Base
     {
         if (is_null($closure) || $closure === true) {
             $data = is_null($column) ? $data : (isset($data[$column]) ? $data[$column] : null);
-            if ($closure === true && is_null($data)) throw new \Exception("Column {$column} is required!");
+            if ($closure === true && is_null($data)) throw new \Exception("Column {$column} is required!", 400);
             return is_array($data) ? array_filter($data) : $data;
         }
 
@@ -23,7 +23,7 @@ class Base
         $dataType = class_exists($dataType) ? new $dataType : null;
 
         if (is_null($dataType)) {
-            throw new \Exception("DataType not found!");
+            throw new \Exception("DataType not found!", 400);
         }
 
         return $dataType($data, ...$parameters);
@@ -35,13 +35,13 @@ class Base
         $valueSet = class_exists($valueSet) ? new $valueSet : null;
 
         if (is_null($valueSet)) {
-            throw new \Exception("ValueSet not found!");
+            throw new \Exception("ValueSet not found!", 400);
         }
 
         $valueSet = $valueSet();
 
         if (!isset($valueSet[$code])) {
-            throw new \Exception("Invalid value sets {$code}!");
+            throw new \Exception("Invalid value sets {$code}!", 400);
         }
 
         $valueSet = $valueSet[$code];

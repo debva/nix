@@ -209,8 +209,8 @@ if (!function_exists('route')) {
     }
 }
 
-if (!function_exists('guuid')) {
-    function guuid()
+if (!function_exists('guid')) {
+    function guid()
     {
         return nix('uuid');
     }

@@ -168,7 +168,7 @@ class Authentication extends Authorization
         if (!$this->crypt->isBase64($token)) {
             return false;
         }
-
+        
         $token = $this->crypt->decrypt(base64_decode($token), 'AES-256-CBC');
         if (!$token) {
             return false;

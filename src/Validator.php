@@ -180,8 +180,12 @@ class Validator
 
     public function ruleUnique($value, ...$params)
     {
-        $params = array_replace([null, 'id', null], $params);
-        list($table, $column, $conditions) = $params;
+        $bindings = ['column' => $value];
+
+        $params = array_replace([null, 'id'], $params);
+        list($table, $column) = $params;
+
+        $conditions = array_slice($params, 2);
 
         $table = array_replace([null, null], array_reverse(array_filter(explode('.', $table))));
         list($table, $connection) = $table;
@@ -189,39 +193,39 @@ class Validator
         $column = array_replace([null, null], array_filter(explode('=', $column)));
         list($column, $ignore) = $column;
 
-        if (preg_match('/(\w+)\s*([=<>!]+)\s*(\w+)/', $conditions, $matches)) {
-            $conditions = [trim($matches[1]), trim($matches[2]), trim($matches[3])];
-        } else {
-            $conditions = [];
+        foreach ($conditions as $index => $condition) {
+            if (preg_match('/(\w+)\s*([=<>!]+)\s*(\w+)/', $condition, $matches)) {
+                $value = trim($matches[3]);
+                $value = (substr($value, 0, 1) === '{' && substr($value, -1) === '}') ? request(trim($value, '{}'))  : $value;
+                $condition = [trim($matches[1]), trim($matches[2]), $value];
+            }
+
+            if (!empty($condition) && (count($condition) < 3 || count($condition) > 3)) {
+                throw new \Exception('Unique condition must have a column, operator, and value!');
+            }
+
+            $bindings = array_merge($bindings, ["condition_{$index}" => end($condition)]);
+            array_splice($condition, 2, 1, ":condition_{$index}");
+            $conditions[] = $condition;
         }
 
-        if (!empty($conditions) && (count($conditions) < 3 || count($conditions) > 3)) {
-            throw new \Exception('Unique condition must have a column, operator, and value!');
-        }
+        $conditions = implode(' AND ', array_map(function ($condition) {
+            return trim(implode(' ', $condition));
+        }, array_values(array_filter($conditions, 'is_array'))));
 
         if (substr($ignore, 0, 1) === '{' && substr($ignore, -1) === '}') {
             $ignore = request(trim($ignore, '{}'));
         }
-
-        $bindings = ['column' => $value];
 
         if (!is_null($ignore)) {
             $bindings = array_merge($bindings, ['ignore' => $ignore]);
             $ignore = "{$column} != :ignore";
         }
 
-        if (!empty($conditions)) {
-            $bindings = array_merge($bindings, ['condition' => end($conditions)]);
-            array_splice($conditions, 2, 1, ':condition');
-        }
-
-        $conditions = implode(' AND ', array_filter(["{$column} = :column", $ignore, trim(implode(' ', $conditions))]));
+        $conditions = implode(' AND ', array_filter(["{$column} = :column", $ignore, $conditions]));
         $where = "WHERE {$conditions}";
 
-        $exists = db($connection)->query(
-            "SELECT {$column} FROM {$table} {$where} LIMIT 1",
-            $bindings
-        )->column();
+        $exists = db($connection)->query("SELECT {$column} FROM {$table} {$where} LIMIT 1", $bindings)->column();
 
         if ($exists) {
             return 'The :attribute has already been taken';

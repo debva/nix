@@ -8,7 +8,9 @@ class Create extends Base
 {
     public function body($data)
     {
-        return [];
+        $condition = $this->mapping($data, 'condition');
+        $procedure = $this->mapping($data, 'procedure');
+        return $data;
     }
 
     public function response($data)

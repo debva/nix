@@ -37,16 +37,18 @@ class Telegram
         }
     }
 
-    public function inlineKeyboard($keyboard)
+    public function inlineKeyboard(...$keyboard)
     {
-        return json_encode(["inline_keyboard" => [$keyboard]]);
+        return json_encode(["inline_keyboard" => $keyboard]);
     }
 
     public function listenWebhook(\Closure $closure)
     {
         $listen = json_decode(file_get_contents('php://input'), true);
-        if (!is_null($listen) and isset($listen['message'])) {
-            return $closure($listen['message']);
+        if (!is_null($listen) && count($listen) === 2) {
+            $key = array_keys($listen)[1];
+            $data = $listen[$key];
+            return $closure($data, $key);
         }
         return false;
     }

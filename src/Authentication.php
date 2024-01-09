@@ -124,40 +124,6 @@ class Authentication extends Authorization
             return $self;
         });
 
-        $class->macro('save', function ($self, $userId = null, $parentId = null) use (&$token, &$payloads) {
-            $table = env('AUTH_TOKEN_TABLE', 'tokens:parent_id,user_id,token,expires_at');
-            $table = array_filter(explode(':', $table));
-
-            if (count($table) < 2) {
-                throw new \Exception('Auth token table not valid!', 500);
-            }
-
-            list($table, $fields) = $table;
-            $fields = array_filter(explode(',', $fields));
-
-            if (count($fields) < 3) {
-                throw new \Exception('Auth token table not valid!', 500);
-            }
-
-            $field = implode(', ', $fields);
-
-            if (!is_null($token)) {
-                db()->query(
-                    "INSERT INTO {$table} ({$field})
-                    SELECT * FROM (SELECT :a AS `{$fields[0]}`, :b AS `{$fields[1]}`, :c AS `{$fields[2]}`, :d AS `{$fields[3]}`) AS temp 
-                    WHERE NOT EXISTS (SELECT `{$fields[2]}` FROM {$table} WHERE `{$fields[2]}` = :c)",
-                    [
-                        'a' => $parentId,
-                        'b' => $userId,
-                        'c' => md5($token),
-                        'd' => isset($payloads['exp']) ? date('Y-m-d H:i:s', $payloads['exp']) : null,
-                    ]
-                )->execute();
-            }
-
-            return $self;
-        });
-
         $builder($class);
 
         return $token;
@@ -168,7 +134,7 @@ class Authentication extends Authorization
         if (!$this->crypt->isBase64($token)) {
             return false;
         }
-        
+
         $token = $this->crypt->decrypt(base64_decode($token), 'AES-256-CBC');
         if (!$token) {
             return false;
@@ -277,32 +243,5 @@ class Authentication extends Authorization
         }
 
         return json_decode(base64_decode($payload), true);
-    }
-
-    public function revoke($token = null)
-    {
-    }
-
-    public function purge()
-    {
-        $table = env('AUTH_TOKEN_TABLE', 'tokens:parent_id,user_id,token,expires_at');
-        $table = array_filter(explode(':', $table));
-
-        if (count($table) < 2) {
-            throw new \Exception('Auth token table not valid!', 500);
-        }
-
-        list($table, $fields) = $table;
-        $fields = array_filter(explode(',', $fields));
-
-        if (count($fields) < 3) {
-            throw new \Exception('Auth token table not valid!', 500);
-        }
-
-        $exp = end($fields);
-
-        db()->query("DELETE FROM {$table} WHERE {$exp} < NOW()")->execute();
-
-        return true;
     }
 }

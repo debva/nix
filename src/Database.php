@@ -59,7 +59,7 @@ class Database
             $dsn = "{$connection}:host={$host};port={$port};dbname={$dbname}";
             $options = [
                 \PDO::ATTR_ERRMODE              => \PDO::ERRMODE_EXCEPTION,
-                \PDO::ATTR_DEFAULT_FETCH_MODE   => \PDO::FETCH_ASSOC
+                \PDO::ATTR_DEFAULT_FETCH_MODE   => \PDO::FETCH_ASSOC,
             ];
 
             $this->database = new \PDO($dsn, $user, $password, $options);
@@ -345,6 +345,8 @@ class Database
 
         try {
             $result = [];
+            $mark = $this->getMark();
+            $table = "{$mark}{$table}{$mark}";
 
             if (count($values) != count($values, COUNT_RECURSIVE)) {
                 foreach ($values as $value) {
@@ -378,6 +380,8 @@ class Database
 
         try {
             $result = [];
+            $mark = $this->getMark();
+            $table = "{$mark}{$table}{$mark}";
 
             if (count($values) != count($values, COUNT_RECURSIVE)) {
                 if (count($values) !== count($conditions)) {
@@ -413,6 +417,8 @@ class Database
         $currentTransactionLevel = $this->getTransactionLevel();
 
         try {
+            $mark = $this->getMark();
+            $table = "{$mark}{$table}{$mark}";
             $builder = $this->buildConditions($conditions);
             $query = is_null($builder['query']) ? '' : "WHERE {$builder['query']}";
             $this->query("DELETE FROM {$table} {$query}", $builder['bindings'])->execute();
@@ -432,7 +438,9 @@ class Database
 
         try {
             $result = [];
-            $uniqueBy = is_array($uniqueBy) ? $uniqueBy : [$uniqueBy];
+            $mark = $this->getMark();
+            $table = "{$mark}{$table}{$mark}";
+            $uniqueBy = array_filter(is_array($uniqueBy) ? $uniqueBy : [$uniqueBy]);
 
             if (count($values) != count($values, COUNT_RECURSIVE)) {
                 foreach ($values as $value) {
@@ -444,24 +452,32 @@ class Database
                     return ['condition' => [$field, '=', $value]];
                 }, array_keys($uniqueBy), array_values($uniqueBy));
 
-                $builder = $this->buildConditions($conditions);
-                $bindings = array_merge(array_values($values), $builder['bindings']);
-
                 $fieldsInsert = $this->buildFields($values);
-                $fieldsAlias = $this->buildFields($values, false);
-                $fieldsUpdate = $this->buildFields($values, true);
-                $fieldsSelect = $this->buildFields($uniqueBy);
 
-                $this->query(array_merge([
-                    [
-                        'query'     => $this->sanitizeQuery("INSERT INTO {$table} ({$fieldsInsert}) SELECT * FROM (SELECT {$fieldsAlias}) AS temp WHERE NOT EXISTS (SELECT {$fieldsSelect} FROM {$table} WHERE {$builder['query']})"),
-                        'bindings'  => $this->sanitizeBindings($bindings),
-                    ],
-                    $update ? [
-                        'query'     => $this->sanitizeQuery("UPDATE {$table} SET {$fieldsUpdate} WHERE {$builder['query']}"),
-                        'bindings'  => $this->sanitizeBindings($bindings),
-                    ] : []
-                ]))->execute();
+                if (empty($conditions)) {
+                    $this->query(
+                        $this->sanitizeQuery("INSERT INTO {$table} ({$fieldsInsert}) VALUES ({$this->buildPlaceholder($values)})"),
+                        $this->sanitizeBindings(array_values($values))
+                    )->execute();
+                } else {
+                    $builder = $this->buildConditions($conditions);
+                    $bindings = array_merge(array_values($values), $builder['bindings']);
+
+                    $fieldsUpdate = $this->buildFields($values, true);
+                    $fieldsAlias = $this->buildFields($values, false);
+                    $fieldsSelect = $this->buildFields($uniqueBy);
+
+                    $this->query(array_merge([
+                        [
+                            'query'     => $this->sanitizeQuery("INSERT INTO {$table} ({$fieldsInsert}) SELECT * FROM (SELECT {$fieldsAlias}) AS temp WHERE NOT EXISTS (SELECT {$fieldsSelect} FROM {$table} WHERE {$builder['query']})"),
+                            'bindings'  => $this->sanitizeBindings($bindings),
+                        ],
+                        $update ? [
+                            'query'     => $this->sanitizeQuery("UPDATE {$table} SET {$fieldsUpdate} WHERE {$builder['query']}"),
+                            'bindings'  => $this->sanitizeBindings($bindings),
+                        ] : []
+                    ]))->execute();
+                }
 
                 $result = $values;
             }

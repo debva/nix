@@ -6,7 +6,7 @@ use Debva\Nix\Extension\SatuSehat\Mapping\Encounter\Create;
 
 trait Encounter
 {
-    public function patient()
+    public function encounter()
     {
         $this->module = __FUNCTION__;
         return $this;

@@ -4,6 +4,7 @@ namespace Debva\Nix\Extension;
 
 use Debva\Nix\Extension\SatuSehat\Auth;
 use Debva\Nix\Extension\SatuSehat\Base;
+use Debva\Nix\Extension\SatuSehat\Encounter;
 use Debva\Nix\Extension\SatuSehat\Location;
 use Debva\Nix\Extension\SatuSehat\Organization;
 use Debva\Nix\Extension\SatuSehat\Patient;
@@ -11,7 +12,7 @@ use Debva\Nix\Extension\SatuSehat\Practitioner;
 
 class SatuSehat extends Base
 {
-    use Auth, Practitioner, Organization, Location, Patient;
+    use Auth, Practitioner, Organization, Location, Patient, Encounter;
 
     protected $organizationID;
 

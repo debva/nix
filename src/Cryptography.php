@@ -16,6 +16,11 @@ class Cryptography
         return hash_hmac($algo, $data, $key, $binary);
     }
 
+    public function bcrypt($data)
+    {
+        return password_hash($data, PASSWORD_BCRYPT);
+    }
+
     public function getPrivateKey($privateKeyFile)
     {
         if (!file_exists($privateKeyFile)) {
@@ -104,7 +109,7 @@ class Cryptography
 
         $iv = substr(base64_encode($passphrase ? $passphrase : $key), 0, 15);
         $iv = strlen($iv) < 16 ? str_pad($iv, 16, $iv) : $iv;
-        
+
         return openssl_encrypt($data, $cipher_algo, $passphrase, 0, ($iv));
     }
 
@@ -115,7 +120,7 @@ class Cryptography
 
         $iv = substr(base64_encode($passphrase ? $passphrase : $key), 0, 15);
         $iv = strlen($iv) < 16 ? str_pad($iv, 16, $iv) : $iv;
-        
+
         return openssl_decrypt($data, $cipher_algo, $passphrase, 0, ($iv));
     }
 }

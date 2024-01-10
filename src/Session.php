@@ -50,6 +50,12 @@ class Session
         return isset($_SESSION['__name']) ? $_SESSION['__name'] : null;
     }
 
+    public function setLifetime($lifetime)
+    {
+        $this->lifetime = (int) $lifetime;
+        return $this;
+    }
+
     protected function load($session)
     {
         if (!is_array($session) || !isset($session['__name'], $session['__expires_at'])) {
@@ -69,12 +75,6 @@ class Session
     protected function getExpires()
     {
         return time() + $this->lifetime;
-    }
-
-    protected function setLifetime($lifetime)
-    {
-        $this->lifetime = (int) $lifetime;
-        return $this;
     }
 
     protected function set($key, $value = null)

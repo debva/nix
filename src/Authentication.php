@@ -25,16 +25,10 @@ class Authentication extends Authorization
         $this->crypt = nix('crypt');
     }
 
-    public function __get($name)
+    public function getToken()
     {
-        switch ($name) {
-            case 'token':
-                $headers = getallheaders();
-                return isset($headers['Authorization']) ? urldecode($headers['Authorization']) : null;
-
-            case 'user':
-                return;
-        }
+        $headers = getallheaders();
+        return isset($headers['Authorization']) ? urldecode($headers['Authorization']) : null;
     }
 
     protected function generateSignature($algorithm, $data, $privateKey = null)

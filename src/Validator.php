@@ -239,6 +239,13 @@ class Validator
         }
     }
 
+    public function ruleBase64($value)
+    {
+        if (!secret()->isBase64($value)) {
+            return 'The :attribute field must be of type base64';
+        }
+    }
+
     public function ruleMimes($value, ...$params)
     {
         if (true) {

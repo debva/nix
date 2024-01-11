@@ -7,10 +7,10 @@ abstract class Environment
     public function __construct()
     {
         if (!isset($_ENV['_NIX_VERSION'])) {
-            $envPath = (new Storage)->basePath('.env');
+            $envPath = (new Storage)->basePath() . DIRECTORY_SEPARATOR . '.env';
 
             if (!file_exists($envPath)) {
-                $defaultEnvPath = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', 'stubs', '.env.stub']);
+                $defaultEnvPath = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', 'stubs', 'env.stub']);
 
                 if (!copy($defaultEnvPath, $envPath)) {
                     throw new \Exception('Environment file cannot be created!');

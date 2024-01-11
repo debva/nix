@@ -25,7 +25,7 @@ abstract class Macro
             }
         }
 
-        throw new \Exception("Method [$method] does not exist.");
+        throw new \Exception("Method [$method] does not exist.", 500);
     }
 
     public function macro($name, $callback)

@@ -96,7 +96,10 @@ if (!function_exists('service')) {
 
         foreach ($services as $service) {
             $serviceClass = basename($service, '.php');
-            $name = strtolower(preg_replace('/([a-z])([A-Z])|-/', '$1_$2', $serviceClass));
+
+            if (ctype_upper($serviceClass)) $name = strtolower($serviceClass);
+            else $name = lcfirst(implode('', array_map('ucfirst', preg_split('/(?=[A-Z])/', $serviceClass, -1, PREG_SPLIT_NO_EMPTY))));
+
             $class->macro($name, function ($self, ...$args) use ($service, $serviceClass) {
                 require_once($service);
                 $class = new $serviceClass(...$args);

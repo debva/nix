@@ -8,6 +8,10 @@ class Authentication extends Authorization
 
     protected $algorithms = [];
 
+    protected $token;
+
+    protected $user = [];
+
     public function __construct()
     {
         $this->algorithms = [
@@ -23,12 +27,50 @@ class Authentication extends Authorization
         ];
 
         $this->crypt = nix('crypt');
+
+        $headers = getallheaders();
+        $this->token = isset($headers['Authorization']) ? urldecode($headers['Authorization']) : null;
     }
 
     public function getToken()
     {
-        $headers = getallheaders();
-        return isset($headers['Authorization']) ? urldecode($headers['Authorization']) : null;
+        return $this->token;
+    }
+
+    public function setUser($user)
+    {
+        return $this->user = $user;
+    }
+
+    public function user($key = null, $search = [], $column = false)
+    {
+        if (!empty($key) || (is_array($column) && !empty($column))) {
+            $user = $this->user;
+
+            foreach (explode('.', $key) as $key) {
+                $user = isset($user[$key]) ? $user[$key] : null;
+            }
+
+            if (is_array($user) && !empty($search) && is_array($search)) {
+                $user = array_filter($user, function ($item) use ($search) {
+                    foreach ($search as $key => $value) {
+                        if (!isset($item[$key]) || !(is_string($value) ? startsWith($item[$key], $value, true) : $item[$key] === $value)) {
+                            return null;
+                        }
+                    }
+
+                    return $item;
+                });
+
+                if ($column === false) return $user;
+                $value = array_column($user, $column);
+                return $column === false ? $user : (!empty($value) ? $value : null);
+            }
+
+            return $user;
+        }
+
+        return $this->user;
     }
 
     protected function generateSignature($algorithm, $data, $privateKey = null)

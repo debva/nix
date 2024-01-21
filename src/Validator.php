@@ -166,7 +166,8 @@ class Validator
 
     public function ruleIn($value, ...$params)
     {
-        if (!in_array($value, $params)) {
+        $in = array_filter($params);
+        if (!empty($in) && !in_array($value, $in)) {
             return 'The :attribute field must exist in ' . implode(', ', $params);
         }
     }

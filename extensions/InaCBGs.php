@@ -80,6 +80,10 @@ class InaCBGs
 
     public function __construct($url, $key)
     {
+        if (!$url || !$key) {
+            throw new \Exception('Invalid url or key provided please double check', 400);
+        }
+
         $this->url = $url;
 
         $this->key = $key;
@@ -121,7 +125,7 @@ class InaCBGs
         $key = hex2bin($this->key ? $this->key : '');
 
         if (mb_strlen($key, '8bit') !== 32) {
-            throw new \Exception('Needs a 256-bit key!');
+            throw new \Exception('Needs a 256-bit key!', 500);
         }
 
         $chiper = 'AES-256-CBC';
@@ -151,7 +155,7 @@ class InaCBGs
         $key = hex2bin($this->key ? $this->key : '');
 
         if (mb_strlen($key, '8bit') !== 32) {
-            throw new \Exception('Needs a 256-bit key!');
+            throw new \Exception('Needs a 256-bit key!', 500);
         }
 
         $first = strpos($string, "\n") + 1;
@@ -169,7 +173,7 @@ class InaCBGs
         $calc_signature = mb_substr(hash_hmac('SHA256', $encrypted, $key, true), 0, 10, '8bit');
 
         if (!$this->compare($signature, $calc_signature)) {
-            return new \Exception('SIGNATURE_NOT_MATCH');
+            return new \Exception('SIGNATURE_NOT_MATCH', 500);
         }
 
         $decrypted = openssl_decrypt($encrypted, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);

@@ -191,6 +191,21 @@ class Datatable
         return $this;
     }
 
+    public function getData()
+    {
+        $this->editColumns = array_filter($this->editColumns);
+
+        return array_map(function ($data) {
+            foreach (array_keys($this->editColumns) as $column) {
+                if (in_array($column, array_keys($data))) {
+                    $data[$column] = $this->editColumns[$column]($data);
+                }
+            }
+
+            return $data;
+        }, $this->data);
+    }
+
     public function response()
     {
         $this->editColumns = array_filter($this->editColumns);

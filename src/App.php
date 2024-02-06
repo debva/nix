@@ -95,7 +95,6 @@ class App extends Bridge
                 $action = require_once($actionPath);
 
                 print(response($action()));
-
                 exit(1);
             }
 
@@ -133,7 +132,7 @@ class App extends Bridge
             throw new \Exception('Route is not valid!', 500);
         }
 
-        return $this->middleware(function () use ($action) {
+        $middleware = $this->middleware(function () use ($action) {
             $reflection = new \ReflectionFunction($action);
             $parameter = array_values(request());
             $parameters = $reflection->getParameters();
@@ -146,6 +145,14 @@ class App extends Bridge
 
             return $action(...$arguments);
         });
+
+        if (!($middleware instanceof \Closure)) $action = $middleware;
+        else $action = $action();
+
+        $this->verbose = false;
+
+        print(is_array($action) ? response($action) : $action);
+        exit(1);
     }
 
     private function handleError($type, $message, $code, $file, $line, $trace = [])
@@ -178,7 +185,7 @@ class App extends Bridge
         $middlewares = [];
         $middlewarePath = implode(DIRECTORY_SEPARATOR, [basePath(), $this->appPath, $this->middlewarePath]);
 
-        if (!is_dir($middlewarePath)) return $action();
+        if (!is_dir($middlewarePath)) return $action;
         $middlewares = array_filter(glob(implode(DIRECTORY_SEPARATOR, [$middlewarePath, '*.php'])), 'file_exists');
 
         $next = function ($middlewares) use (&$next, &$middleware, $action) {
@@ -192,13 +199,7 @@ class App extends Bridge
                 }
             }
 
-            if (!($middleware instanceof \Closure)) $action = $middleware;
-            else $action = $action();
-
-            $this->verbose = false;
-            print(is_array($action) ? response($action) : $action);
-
-            exit(1);
+            return $action;
         };
 
         return $next($middlewares);

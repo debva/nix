@@ -27,14 +27,14 @@ abstract class Bridge extends Environment
             header("HTTP/1.1 200 OK");
             exit(0);
         }
+
+        if (!defined('NIX_START')) {
+            throw new \Exception('Constants NIX_START must be defined first!');
+        }
     }
 
     public function loadtime()
     {
-        if (!defined('NIX_START')) {
-            throw new \Exception('Constants NIX_START must be defined first!');
-        }
-
         return microtime(true) - NIX_START;
     }
 }

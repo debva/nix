@@ -29,7 +29,7 @@ abstract class Bridge extends Environment
         }
 
         if (!defined('NIX_START')) {
-            throw new \Exception('Constants NIX_START must be defined first!');
+            throw new \Exception('Constants NIX_START must be defined first!', 500);
         }
     }
 

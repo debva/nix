@@ -4,11 +4,11 @@ namespace Debva\Nix;
 
 class Datatable
 {
-    protected $loadtime = 0;
-
     protected $limit = 10;
 
     protected $page = 1;
+    
+    protected $offset = 0;
 
     protected $total = 0;
 
@@ -28,8 +28,6 @@ class Datatable
 
     public function __construct($data = [])
     {
-        $this->loadtime = microtime(true);
-
         $request = request('datatable');
         $request = array_merge(['page' => 1, 'limit' => 10], (is_null($request) || !is_array($request)) ? [] : $request);
         $request['search'] = isset($request['search']) ? $request['search'] : [];
@@ -235,7 +233,7 @@ class Datatable
         });
 
         $data = array_merge([
-            'loadtime'      => number_format(microtime(true) - $this->loadtime, 3, ',', '.'),
+            'loadtime'      => number_format(microtime(true) - NIX_START, 3, ',', '.'),
             'limit'         => $this->limit,
             'page'          => $this->page,
             'total'         => $this->total,

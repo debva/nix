@@ -39,7 +39,7 @@ class Storage
         return file_exists($filepath);
     }
 
-    public function put($filepath, $content, $force = false)
+    public function save($filepath, $content, $force = false)
     {
         $filepath = implode(DIRECTORY_SEPARATOR, [
             $this->storagePath,

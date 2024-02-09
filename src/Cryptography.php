@@ -76,7 +76,7 @@ class Cryptography
         return $isVerified === 1;
     }
 
-    public function generateRSAKey($config, &$privateKeyPEM, &$publicKeyPEM)
+    public function generateRSAKey(&$privateKeyPEM, &$publicKeyPEM, $config = [])
     {
         $config = array_merge([
             "digest_alg"        => "SHA512",

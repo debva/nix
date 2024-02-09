@@ -82,7 +82,7 @@ class Cryptography
             throw new \Exception('Private key does not exist!', 500);
         }
         
-        if (!openssl_sign($data, $signature, $privateKey, $algorithm)) {
+        if (!openssl_sign((is_string($data) ? $data : json_encode($data)), $signature, $privateKey, $algorithm)) {
             throw new \Exception('Failed to generate signature!', 500);
         }
 
@@ -104,7 +104,7 @@ class Cryptography
         }
 
         $signature = base64_decode(strtr($signature, '-_', '+/'));
-        $isVerified = openssl_verify($data, $signature, $publicKey, $algorithm);
+        $isVerified = openssl_verify((is_string($data) ? $data : json_encode($data)), $signature, $publicKey, $algorithm);
 
         if (PHP_VERSION <= '8.0.0') {
             openssl_free_key($publicKey);

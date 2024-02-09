@@ -362,7 +362,10 @@ class Database
                 )->execute();
 
                 $lastInsertId = $this->getConnection()->lastInsertId($this->getKeyName());
-                $result = $lastInsertId === 0 ? $values : array_merge([$this->getKeyName() => $lastInsertId], $values);
+                $result = $lastInsertId === 0 ? $values : array_merge(
+                    [(is_null($this->getKeyName()) ? 'id' : $this->getKeyName()) => $lastInsertId],
+                    $values
+                );
             }
 
             if ($currentTransactionLevel === $this->transactionLevelUsed) $this->commit();

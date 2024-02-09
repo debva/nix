@@ -319,14 +319,14 @@ class Database
                 foreach ($bindings as $key => &$value) {
                     $statement->bindParam((is_int($key) ? $key + 1 : $key), $value, $this->getBindingType($value));
                 }
-                return $statement->execute($bindings);
+                return $statement->execute();
             }, $this->statement, $this->bindings);
         }
 
         foreach ($this->bindings as $key => &$value) {
             $this->statement->bindParam((is_int($key) ? $key + 1 : $key), $value, $this->getBindingType($value));
         }
-        return $this->statement->execute($this->bindings);
+        return $this->statement->execute();
     }
 
     public function query($query, array $bindings = [])

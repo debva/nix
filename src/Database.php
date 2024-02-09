@@ -12,7 +12,7 @@ class Database
 
     protected $mark;
 
-    protected $primaryKey = 'id';
+    protected $primaryKey = null;
 
     protected $query;
 

@@ -72,7 +72,7 @@ class Cryptography
         return $publicKey;
     }
 
-    public function generateSignature($data, $privateKey, $algorithm)
+    public function generateSignature($data, $privateKey, $algorithm = 'RS512')
     {
         if (!in_array($algorithm, array_keys($this->algorithms))) {
             throw new \Exception('Invalid algorithm!');
@@ -89,7 +89,7 @@ class Cryptography
         return rtrim(strtr(base64_encode($signature), '+/', '-_'), '=');
     }
 
-    public function verifySignature($data, $signature, $publicKey, $algorithm)
+    public function verifySignature($data, $signature, $publicKey, $algorithm = 'RS512')
     {
         if (!in_array($algorithm, array_keys($this->algorithms))) {
             throw new \Exception('Invalid algorithm!');

@@ -6,29 +6,15 @@ class Authentication extends Authorization
 {
     protected $crpyt;
 
-    protected $algorithms = [];
-
     protected $token;
 
     protected $user = [];
 
     public function __construct()
     {
-        $this->algorithms = [
-            'HS256'     => 'sha256',
-            'HS384'     => 'sha384',
-            'HS512'     => 'sha512',
-            'PS256'     => OPENSSL_ALGO_SHA256,
-            'PS384'     => OPENSSL_ALGO_SHA384,
-            'PS512'     => OPENSSL_ALGO_SHA512,
-            'RS256'     => OPENSSL_ALGO_SHA256,
-            'RS384'     => OPENSSL_ALGO_SHA384,
-            'RS512'     => OPENSSL_ALGO_SHA512,
-        ];
+        $headers = getallheaders();
 
         $this->crypt = nix('crypt');
-
-        $headers = getallheaders();
         $this->token = isset($headers['Authorization']) ? urldecode($headers['Authorization']) : null;
     }
 
@@ -76,7 +62,6 @@ class Authentication extends Authorization
     protected function generateSignature($algorithm, $data, $privateKey = null)
     {
         $algorithmUsed = substr($algorithm, 0, 2);
-        $algorithm = $this->algorithms[$algorithm];
 
         switch ($algorithmUsed) {
             case 'HS':
@@ -93,7 +78,6 @@ class Authentication extends Authorization
     protected function verifySignature($algorithm, $data, $signature, $publicKey = null)
     {
         $algorithmUsed = substr($algorithm, 0, 2);
-        $algorithm = $this->algorithms[$algorithm];
 
         switch ($algorithmUsed) {
             case 'HS':
@@ -145,10 +129,6 @@ class Authentication extends Authorization
         });
 
         $class->macro('signature', function ($self, $algorithm, $privateKey = null) use (&$token, &$headers, &$payloads) {
-            if (!in_array($algorithm, array_keys($this->algorithms))) {
-                throw new \Exception('Invalid algorithm!');
-            }
-
             $headerPayload = implode('.', [
                 str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(json_encode(array_merge(['alg' => $algorithm, 'typ' => 'JWT'], $headers)))),
                 str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(json_encode($payloads)))
@@ -191,9 +171,6 @@ class Authentication extends Authorization
         }
 
         $algorithm = $header['alg'];
-        if (!in_array($algorithm, array_keys($this->algorithms))) {
-            throw new \Exception('Invalid algorithm!');
-        }
 
         if (isset($payload['exp']) && $payload['exp'] < $time) {
             return false;

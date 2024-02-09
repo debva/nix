@@ -4,16 +4,37 @@ namespace Debva\Nix;
 
 class Cryptography
 {
+    protected $algorithms;
+
+    public function __construct()
+    {
+        $this->algorithms = [
+            'HS256'     => 'sha256',
+            'HS384'     => 'sha384',
+            'HS512'     => 'sha512',
+            'PS256'     => OPENSSL_ALGO_SHA256,
+            'PS384'     => OPENSSL_ALGO_SHA384,
+            'PS512'     => OPENSSL_ALGO_SHA512,
+            'RS256'     => OPENSSL_ALGO_SHA256,
+            'RS384'     => OPENSSL_ALGO_SHA384,
+            'RS512'     => OPENSSL_ALGO_SHA512,
+        ];
+    }
+
     public function isBase64($value)
     {
         $decoded = base64_decode($value, true);
         return ($decoded !== false && base64_encode($decoded) === $value);
     }
 
-    public function hmac($algo, $data, $binary = true)
+    public function hmac($algorithm, $data, $binary = true)
     {
+        if (!in_array($algorithm, array_keys($this->algorithms))) {
+            throw new \Exception('Invalid algorithm!');
+        }
+        
         $key = getenv('APP_KEY') ? getenv('APP_KEY') : 'NIX_SECRET';
-        return hash_hmac($algo, $data, $key, $binary);
+        return hash_hmac($this->algorithms[$algorithm], $data, $key, $binary);
     }
 
     public function bcrypt($data)
@@ -53,6 +74,10 @@ class Cryptography
 
     public function generateSignature($data, $privateKey, $algorithm)
     {
+        if (!in_array($algorithm, array_keys($this->algorithms))) {
+            throw new \Exception('Invalid algorithm!');
+        }
+        
         if (!openssl_sign($data, $signature, $privateKey, $algorithm)) {
             throw new \Exception('Failed to generate signature!', 500);
         }
@@ -66,6 +91,10 @@ class Cryptography
 
     public function verifySignature($data, $signature, $publicKey, $algorithm)
     {
+        if (!in_array($algorithm, array_keys($this->algorithms))) {
+            throw new \Exception('Invalid algorithm!');
+        }
+
         $signature = base64_decode(strtr($signature, '-_', '+/'));
         $isVerified = openssl_verify($data, $signature, $publicKey, $algorithm);
 

@@ -75,7 +75,11 @@ class Cryptography
     public function generateSignature($data, $privateKey, $algorithm = 'RS512')
     {
         if (!in_array($algorithm, array_keys($this->algorithms))) {
-            throw new \Exception('Invalid algorithm!');
+            throw new \Exception('Invalid algorithm!', 500);
+        }
+
+        if (!file_exists($privateKey)) {
+            throw new \Exception('Private key does not exist!', 500);
         }
         
         if (!openssl_sign($data, $signature, $privateKey, $algorithm)) {
@@ -92,7 +96,11 @@ class Cryptography
     public function verifySignature($data, $signature, $publicKey, $algorithm = 'RS512')
     {
         if (!in_array($algorithm, array_keys($this->algorithms))) {
-            throw new \Exception('Invalid algorithm!');
+            throw new \Exception('Invalid algorithm!', 500);
+        }
+
+        if (!file_exists($publicKey)) {
+            throw new \Exception('Public key does not exist!', 500);
         }
 
         $signature = base64_decode(strtr($signature, '-_', '+/'));

@@ -60,6 +60,7 @@ class Database
             $options = [
                 \PDO::ATTR_ERRMODE              => \PDO::ERRMODE_EXCEPTION,
                 \PDO::ATTR_DEFAULT_FETCH_MODE   => \PDO::FETCH_ASSOC,
+                \PDO::ATTR_EMULATE_PREPARES     => true,
             ];
 
             $this->database = new \PDO($dsn, $user, $password, $options);
@@ -174,6 +175,18 @@ class Database
     public function getBindings()
     {
         return $this->bindings;
+    }
+
+    public function getBindingType($value)
+    {
+        $type = gettype($value);
+        $types = [
+            'string'    => \PDO::PARAM_STR,
+            'integer'   => \PDO::PARAM_INT,
+            'boolean'   => \PDO::PARAM_BOOL,
+            'NULL'      => \PDO::PARAM_NULL
+        ];
+        return in_array($type, array_keys($types)) ? $types[$type] : $types[0];
     }
 
     public function getStatement()
@@ -303,10 +316,16 @@ class Database
     {
         if (is_array($this->statement)) {
             return array_map(function ($statement, $bindings) {
+                foreach ($bindings as $key => &$value) {
+                    $statement->bindParam((is_int($key) ? $key + 1 : $key), $value, $this->getBindingType($value));
+                }
                 return $statement->execute($bindings);
             }, $this->statement, $this->bindings);
         }
 
+        foreach ($this->bindings as $key => &$value) {
+            $this->statement->bindParam((is_int($key) ? $key + 1 : $key), $value, $this->getBindingType($value));
+        }
         return $this->statement->execute($this->bindings);
     }
 

@@ -181,10 +181,10 @@ class Database
     {
         $type = gettype($value);
         $types = [
-            'string'    => \PDO::PARAM_STR,
+            'NULL'      => \PDO::PARAM_NULL,
             'integer'   => \PDO::PARAM_INT,
+            'string'    => \PDO::PARAM_STR,
             'boolean'   => \PDO::PARAM_BOOL,
-            'NULL'      => \PDO::PARAM_NULL
         ];
         return in_array($type, array_keys($types)) ? $types[$type] : $types[0];
     }

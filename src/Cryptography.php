@@ -139,7 +139,7 @@ class Cryptography
         $iv = substr(base64_encode($passphrase ? $passphrase : $key), 0, 15);
         $iv = strlen($iv) < 16 ? str_pad($iv, 16, $iv) : $iv;
 
-        return openssl_encrypt($data, $cipher_algo, $passphrase, 0, ($iv));
+        return openssl_encrypt((is_string($data) ? $data : json_encode($data)), $cipher_algo, $passphrase, 0, ($iv));
     }
 
     public function decrypt($data, $cipher_algo = 'aes-256-cbc-hmac-sha256', $passphrase = null)
@@ -150,6 +150,6 @@ class Cryptography
         $iv = substr(base64_encode($passphrase ? $passphrase : $key), 0, 15);
         $iv = strlen($iv) < 16 ? str_pad($iv, 16, $iv) : $iv;
 
-        return openssl_decrypt($data, $cipher_algo, $passphrase, 0, ($iv));
+        return openssl_decrypt((is_string($data) ? $data : json_encode($data)), $cipher_algo, $passphrase, 0, ($iv));
     }
 }

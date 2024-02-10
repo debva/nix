@@ -70,7 +70,6 @@ class Authentication extends Authorization
             case 'PS':
             case 'RS':
                 $data = implode('|', [$algorithm, $data]);
-                $privateKey = $this->crypt->getPrivateKey($privateKey);
                 return $this->crypt->generateSignature($data, $privateKey, $algorithm);
         }
     }
@@ -86,7 +85,6 @@ class Authentication extends Authorization
             case 'PS':
             case 'RS':
                 $data = implode('|', [$algorithm, $data]);
-                $publicKey = $this->crypt->getPublicKey($publicKey);
                 return $this->crypt->verifySignature($data, $signature, $publicKey, $algorithm);
         }
     }
@@ -128,7 +126,7 @@ class Authentication extends Authorization
             return $self;
         });
 
-        $class->macro('signature', function ($self, $algorithm, $privateKey = null) use (&$token, &$headers, &$payloads) {
+        $class->macro('signature', function ($self, $privateKey = null, $algorithm = 'RS512') use (&$token, &$headers, &$payloads) {
             $headerPayload = implode('.', [
                 str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(json_encode(array_merge(['alg' => $algorithm, 'typ' => 'JWT'], $headers)))),
                 str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(json_encode($payloads)))

@@ -32,7 +32,7 @@ class Cryptography
         if (!in_array($algorithm, array_keys($this->algorithms))) {
             throw new \Exception('Invalid algorithm!');
         }
-        
+
         $key = getenv('APP_KEY') ? getenv('APP_KEY') : 'NIX_SECRET';
         return hash_hmac($this->algorithms[$algorithm], $data, $key, $binary);
     }
@@ -78,11 +78,7 @@ class Cryptography
             throw new \Exception('Invalid algorithm!', 500);
         }
 
-        if (!file_exists($privateKey)) {
-            throw new \Exception('Private key does not exist!', 500);
-        }
-        
-        if (!openssl_sign((is_string($data) ? $data : json_encode($data)), $signature, file_get_contents($privateKey), $this->algorithms[$algorithm])) {
+        if (!openssl_sign((is_string($data) ? $data : json_encode($data)), $signature, $this->getPrivateKey($privateKey), $this->algorithms[$algorithm])) {
             throw new \Exception('Failed to generate signature!', 500);
         }
 
@@ -99,12 +95,8 @@ class Cryptography
             throw new \Exception('Invalid algorithm!', 500);
         }
 
-        if (!file_exists($publicKey)) {
-            throw new \Exception('Public key does not exist!', 500);
-        }
-
         $signature = base64_decode(strtr($signature, '-_', '+/'));
-        $isVerified = openssl_verify((is_string($data) ? $data : json_encode($data)), $signature, file_get_contents($publicKey), $this->algorithms[$algorithm]);
+        $isVerified = openssl_verify((is_string($data) ? $data : json_encode($data)), $signature, $this->getPublicKey($publicKey), $this->algorithms[$algorithm]);
 
         if (PHP_VERSION <= '8.0.0') {
             openssl_free_key($publicKey);

@@ -8,6 +8,8 @@ class Telegram
 
     const PARSE_MODE_MARKDOWN = 'MarkdownV2';
 
+    protected $token;
+
     protected $url = 'https://api.telegram.org/bot';
 
     protected $fileUrl = 'https://api.telegram.org/file/bot';

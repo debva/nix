@@ -4,7 +4,7 @@ namespace Debva\Nix;
 
 class Authentication extends Authorization
 {
-    protected $crpyt;
+    protected $crypt;
 
     protected $token;
 

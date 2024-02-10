@@ -57,6 +57,10 @@ class Telegram
 
     public function authorize($authData, $exp = 86400)
     {
+        if (!isset($authData['hash']) || !isset($authData['auth_date'])) {
+            throw new \Exception('Invalid telegram request!', 400);
+        }
+
         $dataCheckArr = [];
         $checkHash = $authData['hash'];
 

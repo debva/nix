@@ -131,7 +131,7 @@ class Cryptography
         return 'The key pair was successfully created';
     }
 
-    public function encrypt($data, $cipher_algo = 'aes-256-cbc-hmac-sha256', $passphrase = null)
+    public function encrypt($data, $cipher_algo = 'aes-256-cbc', $passphrase = null)
     {
         $key = getenv('APP_KEY') ? getenv('APP_KEY') : 'NIX_SECRET';
         $passphrase = $passphrase ? $passphrase : $key;
@@ -142,7 +142,7 @@ class Cryptography
         return openssl_encrypt((is_string($data) ? $data : json_encode($data)), $cipher_algo, $passphrase, 0, ($iv));
     }
 
-    public function decrypt($data, $cipher_algo = 'aes-256-cbc-hmac-sha256', $passphrase = null)
+    public function decrypt($data, $cipher_algo = 'aes-256-cbc', $passphrase = null)
     {
         $key = getenv('APP_KEY') ? getenv('APP_KEY') : 'NIX_SECRET';
         $passphrase = $passphrase ? $passphrase : $key;

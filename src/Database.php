@@ -460,16 +460,15 @@ class Database
 
         try {
             $result = [];
-            $mark = $this->getMark();
-            $table = "{$mark}{$table}{$mark}";
-            $uniqueBy = array_filter(is_array($uniqueBy) ? $uniqueBy : [$uniqueBy]);
 
             if (count($values) != count($values, COUNT_RECURSIVE)) {
                 foreach ($values as $value) {
                     $result = array_merge($result, [$this->upsert($table, $value, $uniqueBy, $update)]);
                 }
             } else {
-                $uniqueBy = array_intersect_key($values, array_flip($uniqueBy));
+                $mark = $this->getMark();
+                $table = "{$mark}{$table}{$mark}";
+                $uniqueBy = array_intersect_key($values, array_flip(array_filter(is_array($uniqueBy) ? $uniqueBy : [$uniqueBy])));
                 $conditions = array_map(function ($field, $value) {
                     return ['condition' => [$field, '=', $value]];
                 }, array_keys($uniqueBy), array_values($uniqueBy));

@@ -41,15 +41,7 @@ class Database
             env("DB{$connection}_PASSWORD"),
         ];
 
-        $this->connection = $connection;
-
-        if (in_array($connection, ['pgsql'])) {
-            $this->whereClause = 'ILIKE';
-            $this->mark = '"';
-        } else {
-            $this->whereClause = 'LIKE';
-            $this->mark = '`';
-        }
+        $this->connection = $this->getDatabaseManagementSystem($connection);
 
         try {
             if (!isset($connection, $host, $dbname, $user, $password)) {
@@ -67,6 +59,31 @@ class Database
         } catch (\PDOException $e) {
             throw new \PDOException($e->getMessage(), 500);
         }
+    }
+
+    public function getDatabaseManagementSystem($connection)
+    {
+        $rdbms = [
+            'mysql' => [
+                'mark'          => '`',
+                'whereClause'   => 'LIKE'
+            ],
+            'pgsql' => [
+                'mark'          => '"',
+                'whereClause'   => 'ILIKE'
+            ],
+        ];
+
+        if (!isset($rdbms[$connection])) {
+            throw new \Exception('Database management system is not available');
+        }
+
+        $rdbms = $rdbms[$connection];
+
+        $this->mark = $rdbms['mark'];
+        $this->whereClause = $rdbms['whereClause'];
+
+        return $connection;
     }
 
     public function sanitizeQuery($query)
@@ -196,7 +213,7 @@ class Database
 
     public function getKeyName()
     {
-        return $this->primaryKey;
+        return is_null($this->primaryKey) ? 'id' : $this->primaryKey;
     }
 
     public function setKeyName($key)
@@ -319,14 +336,32 @@ class Database
                 foreach ($bindings as $key => &$value) {
                     $statement->bindParam((is_int($key) ? $key + 1 : $key), $value, $this->getBindingType($value));
                 }
-                return $statement->execute();
+                $statement->execute();
+                return $statement;
             }, $this->statement, $this->bindings);
         }
 
         foreach ($this->bindings as $key => &$value) {
             $this->statement->bindParam((is_int($key) ? $key + 1 : $key), $value, $this->getBindingType($value));
         }
-        return $this->statement->execute();
+        $this->statement->execute();
+        return $this->statement;
+    }
+
+    public function getLastId($statement, $table = null, $value = [])
+    {
+        if (!in_array($this->connection, ['pgsql'])) {
+            $builder = $this->buildConditions(array_map(function ($value, $key) {
+                return ['condition' => [$key, $value]];
+            }, array_values($value), array_keys($value)));
+
+            return $this->query(
+                "SELECT {$this->mark}{$this->getKeyName()}{$this->mark} FROM {$table} WHERE {$builder['query']}",
+                $builder['bindings']
+            )->column();
+        }
+
+        return $statement->fetchColumn();
     }
 
     public function query($query, array $bindings = [])
@@ -364,30 +399,39 @@ class Database
 
         try {
             $result = [];
-            $mark = $this->getMark();
-            $table = "{$mark}{$table}{$mark}";
 
             if (count($values) != count($values, COUNT_RECURSIVE)) {
                 foreach ($values as $value) {
                     $result = array_merge($result, [$this->create($table, $value)]);
                 }
             } else {
+                $mark = $this->getMark();
+                $table = "{$mark}{$table}{$mark}";
                 $fields = $this->buildFields($values);
                 $placeholder = $this->buildPlaceholder($values);
+                $keyName = $this->getKeyName();
 
-                $this->query(
-                    $this->sanitizeQuery("INSERT INTO {$table} ({$fields}) VALUES ({$placeholder})"),
-                    $this->sanitizeBindings(array_values($values))
-                )->execute();
+                if (in_array($this->connection, ['pgsql'])) {
+                    $statement = $this->query(
+                        $this->sanitizeQuery("INSERT INTO {$table} ({$fields}) VALUES ({$placeholder}) RETURNING {$keyName}"),
+                        $this->sanitizeBindings(array_values($values))
+                    )->execute();
+                } else {
+                    $statement = $this->query(
+                        $this->sanitizeQuery("INSERT INTO {$table} ({$fields}) VALUES ({$placeholder})"),
+                        $this->sanitizeBindings(array_values($values))
+                    )->execute();
+                }
 
-                $lastInsertId = $this->getConnection()->lastInsertId($this->getKeyName());
-                $result = $lastInsertId === 0 ? $values : array_merge(
+                $lastInsertId = $this->getLastId($statement, $table, $values);
+                $result = $lastInsertId === null ? $values : array_merge(
                     [(is_null($this->getKeyName()) ? 'id' : $this->getKeyName()) => $lastInsertId],
                     $values
                 );
             }
 
             if ($currentTransactionLevel === $this->transactionLevelUsed) $this->commit();
+
             return $result;
         } catch (\Exception $e) {
             if ($currentTransactionLevel === $this->transactionLevelUsed) $this->rollBack();
@@ -402,8 +446,6 @@ class Database
 
         try {
             $result = [];
-            $mark = $this->getMark();
-            $table = "{$mark}{$table}{$mark}";
 
             if (count($values) != count($values, COUNT_RECURSIVE)) {
                 if (count($values) !== count($conditions)) {
@@ -414,6 +456,8 @@ class Database
                     $result = array_merge($result, [$this->update($table, $values, $conditions)]);
                 }, $values, $conditions);
             } else {
+                $mark = $this->getMark();
+                $table = "{$mark}{$table}{$mark}";
                 $fields = $this->buildFields($values, true);
                 $builder = $this->buildConditions($conditions);
 

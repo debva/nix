@@ -54,7 +54,7 @@ class Datatable
                 foreach ($request['search'] as $column => $value) {
                     $binding = strtoupper("{$this->namingSearchBindings}{$this->sanitizeColumn($column)}");
                     $bindings = array_merge($bindings, $isNamedBindingType ? [$binding => "%{$value}%"] : ["%{$value}%"]);
-                    $searchQuery[] = "{$this->tableNameAlias}.{$mark}{$this->sanitizeColumn($column)}{$mark} {$whereClause} " . ($isNamedBindingType ? ":{$binding}" : '?');
+                    $searchQuery[] = "{$db->castVarchar("{$this->tableNameAlias}.{$mark}{$this->sanitizeColumn($column)}{$mark}")} {$whereClause} " . ($isNamedBindingType ? ":{$binding}" : '?');
                 }
                 $searchQuery = implode(' OR ', $searchQuery);
                 $searchQuery = "({$searchQuery})";
@@ -66,7 +66,7 @@ class Datatable
                 foreach ($request['filter'] as $column => $value) {
                     $binding = strtoupper("{$this->namingFilterBindings}{$this->sanitizeColumn($column)}");
                     $bindings = array_merge($bindings, $isNamedBindingType ? [$binding => "%{$value}%"] : ["%{$value}%"]);
-                    $filterQuery[] = "{$this->tableNameAlias}.{$mark}{$this->sanitizeColumn($column)}{$mark} {$whereClause} " . ($isNamedBindingType ? ":{$binding}" : '?');
+                    $filterQuery[] = "{$db->castVarchar("{$this->tableNameAlias}.{$mark}{$this->sanitizeColumn($column)}{$mark}")} {$whereClause} " . ($isNamedBindingType ? ":{$binding}" : '?');
                 }
                 $filterQuery = implode(' AND ', $filterQuery);
                 $filterQuery = "({$filterQuery})";

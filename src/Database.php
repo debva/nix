@@ -206,6 +206,15 @@ class Database
         return in_array($type, array_keys($types)) ? $types[$type] : $types[0];
     }
 
+    public function castVarchar($column)
+    {
+        if (in_array($this->connection, ['pgsql'])) {
+            return "CAST({$column} AS VARCHAR)";
+        }
+
+        return $column;
+    }
+
     public function getStatement()
     {
         return $this->statement;

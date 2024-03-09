@@ -170,7 +170,8 @@ if (!function_exists('ext')) {
 if (!function_exists('db')) {
     function db($connection = null)
     {
-        return nix('db', $connection);
+        $db = nix('db');
+        return $db($connection);
     }
 }
 
@@ -243,6 +244,17 @@ if (!function_exists('document')) {
     function document()
     {
         return nix('document');
+    }
+}
+
+if (!function_exists('strContains')) {
+    function strContains($haystack, $needle, $caseInsensitive = false)
+    {
+        if ($caseInsensitive) {
+            return stripos($haystack, $needle) !== false;
+        }
+
+        return strpos($haystack, $needle) !== false;
     }
 }
 

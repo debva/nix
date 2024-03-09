@@ -7,7 +7,7 @@ class Datatable
     protected $limit = 10;
 
     protected $page = 1;
-    
+
     protected $offset = 0;
 
     protected $total = 0;
@@ -22,9 +22,9 @@ class Datatable
 
     protected $tableNameAlias = 'tbl';
 
-    protected $namingSearchBindings = '_NIX_DT_SEARCH_';
+    protected $namingSearchBindings = 'NIX_DT_SEARCH';
 
-    protected $namingFilterBindings = '_NIX_DT_FILTER_';
+    protected $namingFilterBindings = 'NIX_DT_FILTER';
 
     public function __construct($data = [])
     {
@@ -38,13 +38,16 @@ class Datatable
         $this->page = (int) $request['page'];
         $this->offset = ($this->page - 1) * $this->limit;
 
-        if ($data instanceof Database) {
+        if ($data instanceof \Debva\Nix\Database\Base) {
             $db = $data;
             $query = $db->getQuery();
-            $whereClause = $db->getWhereClause();
-            $mark = $db->getMark();
             $bindings = $originalBindings = $db->getBindings();
-            $isNamedBindingType = array_reduce(array_keys($bindings), function ($carry, $key) {
+
+            $whereOperator = $db->getWhereOperator();
+            $indexBinding = count($originalBindings);
+            $table = $db->buildQuotationMark($this->tableNameAlias);
+
+            $isNamedBindingType = empty($bindings) ? false : array_reduce(array_keys($bindings), function ($carry, $key) {
                 return $carry && is_string($key);
             }, true);
 
@@ -52,24 +55,38 @@ class Datatable
             if (!empty($request['search']) && is_array($request['search'])) {
                 $searchQuery = [];
                 foreach ($request['search'] as $column => $value) {
-                    $binding = strtoupper("{$this->namingSearchBindings}{$this->sanitizeColumn($column)}");
-                    $bindings = array_merge($bindings, $isNamedBindingType ? [$binding => "%{$value}%"] : ["%{$value}%"]);
-                    $searchQuery[] = "{$db->castVarchar("{$this->tableNameAlias}.{$mark}{$this->sanitizeColumn($column)}{$mark}")} {$whereClause} " . ($isNamedBindingType ? ":{$binding}" : '?');
+                    if (count($searchQuery) > 0) $searchQuery[] = 'OR';
+                    $column = $db->buildQuotationMark($this->sanitizeColumn($column));
+                    $searchQuery[] = ["{$table}.{$column}", $whereOperator, $value];
                 }
-                $searchQuery = implode(' OR ', $searchQuery);
-                $searchQuery = "({$searchQuery})";
+                $searchQuery = $db->buildConditions(
+                    $searchQuery,
+                    $indexBinding,
+                    false,
+                    $isNamedBindingType
+                        ? $this->namingFilterBindings : null
+                );
+                $bindings = array_merge($bindings, $searchQuery['bindings']);
+                $searchQuery = $searchQuery['query'];
             }
 
             $filterQuery = null;
             if (!empty($request['filter']) && is_array($request['filter'])) {
                 $filterQuery = [];
                 foreach ($request['filter'] as $column => $value) {
-                    $binding = strtoupper("{$this->namingFilterBindings}{$this->sanitizeColumn($column)}");
-                    $bindings = array_merge($bindings, $isNamedBindingType ? [$binding => "%{$value}%"] : ["%{$value}%"]);
-                    $filterQuery[] = "{$db->castVarchar("{$this->tableNameAlias}.{$mark}{$this->sanitizeColumn($column)}{$mark}")} {$whereClause} " . ($isNamedBindingType ? ":{$binding}" : '?');
+                    if (count($filterQuery) > 0) $filterQuery[] = 'AND';
+                    $column = $db->buildQuotationMark($this->sanitizeColumn($column));
+                    $filterQuery[] = ["{$table}.{$column}", $whereOperator, $value];
                 }
-                $filterQuery = implode(' AND ', $filterQuery);
-                $filterQuery = "({$filterQuery})";
+                $filterQuery = $db->buildConditions(
+                    $filterQuery,
+                    $indexBinding,
+                    false,
+                    $isNamedBindingType
+                        ? $this->namingFilterBindings : null
+                );
+                $bindings = array_merge($bindings, $searchQuery['bindings']);
+                $filterQuery = $filterQuery['query'];
             }
 
             $orderQuery = null;
@@ -77,7 +94,8 @@ class Datatable
                 $orderQuery = [];
                 foreach ($request['sort'] as $column => $sort) {
                     if (in_array(strtoupper($sort), ['ASC', 'DESC'])) {
-                        $orderQuery[] = "{$this->tableNameAlias}.{$mark}{$this->sanitizeColumn($column)}{$mark} " . strtoupper($sort);
+                        $column = $db->buildQuotationMark($this->sanitizeColumn($column));
+                        $orderQuery[] = "{$table}.{$column} " . strtoupper($sort);
                     }
                 }
 
@@ -95,15 +113,15 @@ class Datatable
                 $whereQuery = "WHERE {$whereQuery}";
             }
 
-            $data = $db->query("SELECT COUNT(*) FROM ({$query}) AS {$this->tableNameAlias}", $originalBindings);
+            $data = $db->query(trim("SELECT COUNT(*) FROM ({$query}) AS {$table}"), $originalBindings);
             $this->total = (int) $data->column();
-
+            
             if (!empty($whereQuery)) {
-                $data = $db->query(trim("SELECT COUNT(*) FROM ({$query}) AS {$this->tableNameAlias} {$whereQuery}"), $bindings);
+                $data = $db->query(trim("SELECT COUNT(*) FROM ({$query}) AS {$table} {$whereQuery}"), $bindings);
                 $this->totalFiltered = (int) $data->column();
             }
-
-            $query = trim("({$query}) AS {$this->tableNameAlias} {$whereQuery} {$orderQuery}");
+            
+            $query = trim("({$query}) AS {$table} {$whereQuery} {$orderQuery}");
             $data = $db->query(trim("SELECT * FROM {$query} LIMIT {$this->limit} OFFSET {$this->offset}"), $bindings);
             $this->data = $data->get();
         } else {

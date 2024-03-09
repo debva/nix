@@ -6,14 +6,9 @@ abstract class Macro
 {
     public $macros = [];
 
-    public function __set($name, $value)
-    {
-        return $this->{$name} = $value;
-    }
-
     public function __get($name)
     {
-        return $this->{$name};
+        return $this->macros[$name];
     }
 
     public function __call($method, $args)

@@ -214,7 +214,6 @@ abstract class Base
     {
         if (!is_array($conditions)) throw new \Exception('Conditions must be an array', 500);
 
-        $indexBinding = $indexBinding;
         $query = $bindings = [];
         $logicalOperator = [null];
 

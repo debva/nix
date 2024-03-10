@@ -5,7 +5,7 @@ namespace Debva\Nix\Database;
 class PostgreSQL extends Base
 {
     protected $withCast = true;
-    
+
     protected $quoteMark = '"';
 
     protected $whereOperator = 'ILIKE';

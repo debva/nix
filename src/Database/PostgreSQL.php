@@ -109,7 +109,7 @@ class PostgreSQL extends Base
 
     protected function getLastInsertId($connection)
     {
-        return pg_fetch_result($connection, 0);
+        return $this->getPrimaryKey() ? pg_fetch_result($connection, 0) : null;
     }
 
     public function create($table, $data = [])
@@ -129,12 +129,10 @@ class PostgreSQL extends Base
                 $fields = $this->buildFields($data);
                 $values = $this->buildPlaceholder($indexBinding, $data);
 
-                $query = "INSERT INTO {$this->buildQuotationMark($table)} ({$fields}) VALUES ($values) RETURNING {$this->buildQuotationMark($this->primaryKey)}";
-                $query = $this->query(
-                    $this->sanitizeQuery($query),
-                    $this->sanitizeBindings(array_values($data)),
-                    true
-                );
+                $returning = $this->getPrimaryKey() ? "RETURNING {$this->buildQuotationMark($this->primaryKey)}" : '';
+
+                $query = "INSERT INTO {$this->buildQuotationMark($table)} ({$fields}) VALUES ($values) {$returning}";
+                $query = $this->query($query, array_values($data), true);
 
                 $result = $this->getLastInsertId($query);
             }
@@ -173,11 +171,7 @@ class PostgreSQL extends Base
                 $conditions = $this->buildConditions($conditions, $indexBinding);
 
                 $query = "UPDATE {$this->buildQuotationMark($table)} SET {$fields} WHERE {$conditions['query']}";
-                $query = $this->query(
-                    $this->sanitizeQuery($query),
-                    $this->sanitizeBindings(array_merge(array_values($data), $conditions['bindings'])),
-                    true
-                );
+                $query = $this->query($query, array_merge(array_values($data), $conditions['bindings']), true);
             }
 
             $this->commit($level);
@@ -202,11 +196,7 @@ class PostgreSQL extends Base
                 $conditions = $this->buildConditions($conditions, $indexBinding);
 
                 $query = "DELETE FROM {$this->buildQuotationMark($table)} WHERE {$conditions['query']}";
-                $query = $this->query(
-                    $this->sanitizeQuery($query),
-                    $this->sanitizeBindings($conditions['bindings']),
-                    true
-                );
+                $query = $this->query($query, $conditions['bindings'], true);
 
                 $result = true;
             }
@@ -252,14 +242,18 @@ class PostgreSQL extends Base
                     $fieldsAlias = $this->buildFields($data, $indexBinding, self::FIELD_ALIAS);
 
                     $table = $this->buildQuotationMark($table);
-                    $primaryKey = $this->buildQuotationMark($this->primaryKey);
+                    $returning = $this->getPrimaryKey() ? "RETURNING {$this->buildQuotationMark($this->primaryKey)}" : '';
 
                     $conditions = $this->buildConditions($conditions, $indexBinding);
-                    $bindings = $this->sanitizeBindings(array_merge(array_values($data), $conditions['bindings']));
+                    $bindings = array_merge(array_values($data), $conditions['bindings']);
 
-                    $queryInsert = "INSERT INTO {$table} ({$fields}) SELECT * FROM (SELECT {$fieldsAlias}) AS {$this->buildQuotationMark('tmp')} WHERE NOT EXISTS (SELECT {$fields} FROM {$table} WHERE {$conditions['query']}) RETURNING {$primaryKey}";
+                    $queryInsert = "INSERT INTO {$table} ({$fields}) SELECT * FROM (SELECT {$fieldsAlias}) AS {$this->buildQuotationMark('tmp')} WHERE NOT EXISTS (SELECT {$fields} FROM {$table} WHERE {$conditions['query']}) {$returning}";
                     $queryUpdate = "UPDATE {$table} SET {$fieldsBindings} WHERE {$conditions['query']}";
-                    $query = $this->query(array_merge([$queryInsert], $isUpdate ? [$queryUpdate] : []), array_merge([$bindings], $isUpdate ? [$bindings] : []), true);
+
+                    $query = array_merge([$queryInsert], $isUpdate ? [$queryUpdate] : []);
+                    $bindings = array_merge([$bindings], $isUpdate ? [$bindings] : []);
+
+                    $query = $this->query($query, $bindings, true);
 
                     if (is_array($query)) $query = reset($query);
                     $result = $this->getLastInsertId($query);

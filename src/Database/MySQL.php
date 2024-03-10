@@ -122,7 +122,7 @@ class MySQL extends Base
 
     protected function getLastInsertId($connection)
     {
-        return $connection->lastInsertId($this->primaryKey);
+        return $this->getPrimaryKey() ? $connection->lastInsertId($this->primaryKey) : null;
     }
 
     public function create($table, $data = [])
@@ -143,11 +143,7 @@ class MySQL extends Base
                 $values = $this->buildPlaceholder($indexBinding, $data);
 
                 $query = "INSERT INTO {$this->buildQuotationMark($table)} ({$fields}) VALUES ($values)";
-                $query = $this->query(
-                    $this->sanitizeQuery($query),
-                    $this->sanitizeBindings(array_values($data)),
-                    true
-                );
+                $query = $this->query($query, array_values($data), true);
 
                 $result = $this->getLastInsertId($this->getConnection());
             }
@@ -186,11 +182,7 @@ class MySQL extends Base
                 $conditions = $this->buildConditions($conditions, $indexBinding);
 
                 $query = "UPDATE {$this->buildQuotationMark($table)} SET {$fields} WHERE {$conditions['query']}";
-                $query = $this->query(
-                    $this->sanitizeQuery($query),
-                    $this->sanitizeBindings(array_merge(array_values($data), $conditions['bindings'])),
-                    true
-                );
+                $query = $this->query($query, array_merge(array_values($data), $conditions['bindings']), true);
             }
 
             $this->commit($level);
@@ -215,11 +207,7 @@ class MySQL extends Base
                 $conditions = $this->buildConditions($conditions, $indexBinding);
 
                 $query = "DELETE FROM {$this->buildQuotationMark($table)} WHERE {$conditions['query']}";
-                $query = $this->query(
-                    $this->sanitizeQuery($query),
-                    $this->sanitizeBindings($conditions['bindings']),
-                    true
-                );
+                $query = $this->query($query, $conditions['bindings'], true);
 
                 $result = true;
             }
@@ -265,14 +253,17 @@ class MySQL extends Base
                     $fieldsAlias = $this->buildFields($data, $indexBinding, self::FIELD_ALIAS);
 
                     $table = $this->buildQuotationMark($table);
-                    $primaryKey = $this->buildQuotationMark($this->primaryKey);
 
                     $conditions = $this->buildConditions($conditions, $indexBinding);
                     $bindings = $this->sanitizeBindings(array_merge(array_values($data), $conditions['bindings']));
 
                     $queryInsert = "INSERT INTO {$table} ({$fields}) SELECT * FROM (SELECT {$fieldsAlias}) AS {$this->buildQuotationMark('tmp')} WHERE NOT EXISTS (SELECT {$fields} FROM {$table} WHERE {$conditions['query']})";
                     $queryUpdate = "UPDATE {$table} SET {$fieldsBindings} WHERE {$conditions['query']}";
-                    $query = $this->query(array_merge([$queryInsert], $isUpdate ? [$queryUpdate] : []), array_merge([$bindings], $isUpdate ? [$bindings] : []), true);
+
+                    $query = array_merge([$queryInsert], $isUpdate ? [$queryUpdate] : []);
+                    $bindings = array_merge([$bindings], $isUpdate ? [$bindings] : []);
+
+                    $query = $this->query($query, $bindings, true);
 
                     if (is_array($query)) $query = reset($query);
                     $result = $this->getLastInsertId($this->getConnection());

@@ -194,12 +194,12 @@ class App extends Bridge
                 $middleware = require_once($file);
                 $middleware = $middleware($next);
 
-                if ($middleware instanceof \Closure && !empty($middlewares)) {
-                    return $next($middlewares);
-                }
+                if (!is_callable($middleware)) return $middleware;
+
+                if ($middleware instanceof \Closure && empty($middlewares)) return $action;
             }
 
-            return $action;
+            return $next($middlewares);
         };
 
         return $next($middlewares);

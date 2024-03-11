@@ -147,9 +147,9 @@ abstract class Base
         if (!is_array($bindings)) $bindings = [$bindings];
 
         $bindings = array_map(function ($bindings) {
-            return $bindings instanceof \Debva\Nix\Anonymous ? $bindings->bindings : $bindings;
+            return $bindings instanceof \stdClass ? $bindings->bindings : $bindings;
         }, array_filter($bindings, function ($bindings) {
-            $instance = $bindings instanceof \Debva\Nix\Anonymous;
+            $instance = $bindings instanceof \stdClass;
             return !$instance || ($instance && $bindings->bindings);
         }));
         return $bindings;
@@ -175,7 +175,7 @@ abstract class Base
         if (!is_array($data)) throw new \Exception('Field must be an array', 500);
 
         return implode(', ', array_map(function ($value) use (&$indexBinding, $prefixBindingName) {
-            if ($value instanceof \Debva\Nix\Anonymous) {
+            if ($value instanceof \stdClass) {
                 $bindingSymbol = $value->bindings ? $this->buildPlaceholder($indexBinding, [], $prefixBindingName) : '';
                 return str_replace('{symbol}', $bindingSymbol, $value->query);
             }
@@ -259,7 +259,7 @@ abstract class Base
                     $in = [];
                     foreach ($value as $item) {
                         $in[] = $this->buildPlaceholder($indexBinding, [$column => $item], $prefixBindingName);
-                        if ($item instanceof \Debva\Nix\Anonymous) {
+                        if ($item instanceof \stdClass) {
                             if ($item->bindings) $bindings[] = $item->bindings;
                         } else $bindings[] = $item;
                     }
@@ -272,11 +272,11 @@ abstract class Base
                     if (!is_array($value) || count($value) < 3) throw new \Exception("{$operator} have invalid values", 500);
                     list($value1, $logical, $value2) = $value;
 
-                    if ($value1 instanceof \Debva\Nix\Anonymous) {
+                    if ($value1 instanceof \stdClass) {
                         if ($value1->bindings) $bindings[] = $value1->bindings;
                     } else $bindings[] = $value1;
 
-                    if ($value2 instanceof \Debva\Nix\Anonymous) {
+                    if ($value2 instanceof \stdClass) {
                         if ($value2->bindings) $bindings[] = $value2->bindings;
                     } else $bindings[] = $value2;
 
@@ -287,7 +287,7 @@ abstract class Base
                 }
             }
 
-            if ($value instanceof \Debva\Nix\Anonymous) {
+            if ($value instanceof \stdClass) {
                 if ($value->bindings) $bindings[] = $value->bindings;
             } else $bindings[] = $value;
 
@@ -336,11 +336,9 @@ abstract class Base
 
     public function raw($query, $bindings = [])
     {
-        $class = \Debva\Nix\Anonymous::class;
-        $class = new $class;
-        $class->macro('query', $query);
-        $class->macro('bindings', $bindings);
-
+        $class = new \stdClass;
+        $class->query = $query;
+        $class->bindings = $bindings;
         return $class;
     }
 

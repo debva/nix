@@ -15,7 +15,13 @@ class Authentication extends Authorization
         $headers = getallheaders();
 
         $this->crypt = nix('crypt');
-        $this->token = isset($headers['Authorization']) ? urldecode($headers['Authorization']) : null;
+
+        $this->token = null;
+
+        if (isset($headers['Authorization'])) {
+            preg_match('/Bearer\s(\S+)/', urldecode($headers['Authorization']), $matches);
+            $this->token = $matches[1];
+        }
     }
 
     public function getToken()

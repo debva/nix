@@ -122,7 +122,7 @@ class PostgreSQL extends Base
             $result = [];
 
             if (count($data) != count($data, COUNT_RECURSIVE)) {
-                foreach ($data as $item) $result = array_merge($result, $this->create($table, $item));
+                foreach ($data as $item) $result = array_merge($result, [$this->create($table, $item)]);
             } else {
                 $indexBinding = 0;
 
@@ -161,8 +161,8 @@ class PostgreSQL extends Base
 
                 if (!$isConditionsArray) throw new \Exception('Conditions do not match the data', 500);
 
-                array_map(function ($data, $conditions) use ($table) {
-                    $this->update($table, $data, $conditions);
+                return array_map(function ($data, $conditions) use ($table) {
+                    return $this->update($table, $data, $conditions);
                 }, $data, $conditions);
             } else {
                 $indexBinding = 0;

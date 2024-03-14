@@ -208,14 +208,21 @@ class App extends Bridge
     {
         if (!empty($this->errors)) {
             $buffer = response([
-                'os'            => PHP_OS,
-                'version'       => 'PHP ' . PHP_VERSION,
-                'statusCode'    => !empty($this->errors) ? $this->errors[0]['statusCode'] : 0,
-                'message'       => !empty($this->errors) ? $this->errors[0]['message'] : null,
-                'file'          => !empty($this->errors) ? $this->errors[0]['file'] : null,
-                'line'          => !empty($this->errors) ? $this->errors[0]['line'] : null,
-                'errors'        => $this->errors
-            ], 500)->buffer;
+                'statusCode'    => 500,
+                'message'       => !empty($this->errors) ? $this->errors[0]['message'] : 'Internal Server Error',
+            ], 500);
+
+            if (env('APP_DEBUG', false)) {
+                $buffer = response([
+                    'os'            => PHP_OS,
+                    'version'       => 'PHP ' . PHP_VERSION,
+                    'statusCode'    => !empty($this->errors) ? $this->errors[0]['statusCode'] : 0,
+                    'message'       => !empty($this->errors) ? $this->errors[0]['message'] : null,
+                    'file'          => !empty($this->errors) ? $this->errors[0]['file'] : null,
+                    'line'          => !empty($this->errors) ? $this->errors[0]['line'] : null,
+                    'errors'        => $this->errors
+                ], !empty($this->errors) ? $this->errors[0]['statusCode'] : 500)->buffer;
+            }
 
             exit(print($buffer));
         }

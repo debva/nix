@@ -93,7 +93,7 @@ class App extends Bridge
                 $path = implode('/', array_filter([trim(dirname($fullPath), '.'), $name === 'index' ? '' : $name]));
                 $methods = isset($matches[1]) ? [strtoupper($matches[1])] : $this->httpMethod;
 
-                $search = ['{', '}', '-', ' '];
+                $search = ['(', ')', '-', ' '];
                 $replace = ['', '', '_', '_'];
 
                 $name = trim(implode('-', array_merge(

@@ -95,7 +95,7 @@ class Validator
         }
 
         if (!empty($errors)) {
-            print(response(['validation' => $errors], 400));
+            print(response(['validation' => $errors], 400)->buffer);
             exit(0);
         }
 

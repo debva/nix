@@ -207,13 +207,13 @@ class App extends Bridge
     protected function handleError()
     {
         if (!empty($this->errors)) {
-            $buffer = response([
+            $response = response([
                 'statusCode'    => 500,
                 'message'       => !empty($this->errors) ? $this->errors[0]['message'] : 'Internal Server Error',
             ], 500);
 
             if (env('APP_DEBUG', false)) {
-                $buffer = response([
+                $response = response([
                     'os'            => PHP_OS,
                     'version'       => 'PHP ' . PHP_VERSION,
                     'statusCode'    => !empty($this->errors) ? $this->errors[0]['statusCode'] : 0,
@@ -221,10 +221,10 @@ class App extends Bridge
                     'file'          => !empty($this->errors) ? $this->errors[0]['file'] : null,
                     'line'          => !empty($this->errors) ? $this->errors[0]['line'] : null,
                     'errors'        => $this->errors
-                ], !empty($this->errors) ? $this->errors[0]['statusCode'] : 500)->buffer;
+                ], !empty($this->errors) ? $this->errors[0]['statusCode'] : 500);
             }
 
-            exit(print($buffer));
+            exit(print($response->buffer));
         }
 
         return true;

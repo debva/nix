@@ -91,6 +91,7 @@ class App extends Bridge
 
                 $name = strtolower(empty($matches) ? $name : (isset($matches[3]) ? $matches[3] : 'index'));
                 $path = implode('/', array_filter([trim(dirname($fullPath), '.'), $name === 'index' ? '' : $name]));
+                $path = preg_replace('/\/+/', '/', $path);
                 $methods = isset($matches[1]) ? [strtoupper($matches[1])] : $this->httpMethod;
 
                 $search = ['(', ')', '-', ' '];
@@ -156,6 +157,7 @@ class App extends Bridge
         if (!$action) throw new \Exception('Route not found', 404);
 
         $action = $this->middleware($action, function () use ($action) {
+            if (!file_exists($action->action)) throw new \Exception('File action not found', 500);
             $method = require_once($action->action);
 
             if (is_callable($method)) {

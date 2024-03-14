@@ -172,7 +172,9 @@ class App extends Bridge
         });
 
         $action = is_callable($action) ? $action() : $action;
-        exit(print(response($action)->buffer));
+
+        if (empty($this->errors)) exit(print(response($action)->buffer));
+        exit(0);
     }
 
     protected function middleware(\stdClass $request, \Closure $action)

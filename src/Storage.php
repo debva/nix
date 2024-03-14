@@ -11,22 +11,20 @@ class Storage
     public function __construct()
     {
         if (!$this->basePath) {
-            $scriptPath = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $_SERVER['SCRIPT_FILENAME']);
-            $this->basePath = startsWith($scriptPath, getcwd()) ? $scriptPath : implode(DIRECTORY_SEPARATOR, [getcwd(), $scriptPath]);
-            $this->basePath = realpath(implode(DIRECTORY_SEPARATOR, [dirname($this->basePath), '..']));
-            $this->storagePath = implode(DIRECTORY_SEPARATOR, [$this->basePath(), 'storage']);
+            $this->basePath = trim(realpath(implode(DIRECTORY_SEPARATOR, [getcwd(), '..'])));
+            $this->storagePath = implode(DIRECTORY_SEPARATOR, [$this->basePath, 'storage']);
         }
     }
 
-    public function basePath($path = null, $make = false)
+    public function basePath($path = null, $recursive = false)
     {
         if (!is_null($path)) {
-            $path = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, trim($path, '/\\'));
+            $path = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, trim(str_replace($this->basePath, '', $path), '/\\'));
         }
 
         $path = implode(DIRECTORY_SEPARATOR, array_filter([$this->basePath, $path]));
-        if ($make && !realpath($path)) mkdir($path, 0755, true);
-        return realpath($path);
+        if ($recursive && !realpath($path)) mkdir($path, 0755, true);
+        return $path;
     }
 
     public function exists($filepath)
@@ -46,9 +44,7 @@ class Storage
             str_replace(['/', '\\'], DIRECTORY_SEPARATOR, trim($filepath, '\\/'))
         ]);
 
-        if (file_exists($filepath) && !$force) {
-            throw new \Exception('File already exists!');
-        }
+        if (file_exists($filepath) && !$force) return false;
 
         if (!file_exists(dirname($filepath))) {
             mkdir(dirname($filepath), 0755, true);
@@ -64,9 +60,7 @@ class Storage
             str_replace(['/', '\\'], DIRECTORY_SEPARATOR, trim($filepath, '\\/'))
         ]);
 
-        if (!file_exists($filepath)) {
-            throw new \Exception('File not found!');
-        }
+        if (!file_exists($filepath)) return false;
 
         return file_get_contents($filepath);
     }
@@ -78,20 +72,21 @@ class Storage
             str_replace(['/', '\\'], DIRECTORY_SEPARATOR, trim($filepath, '\\/'))
         ]);
 
-        if (!file_exists($filepath)) {
-            throw new \Exception('File not found!');
-        }
+        if (!file_exists($filepath)) return false;
 
         return unlink($filepath);
     }
 
-    public function scan($filepath, $suffix = '*')
+    public function scan($path, $recursive = true, $suffix = '*')
     {
-        $filepath = implode(DIRECTORY_SEPARATOR, [
-            $this->storagePath,
-            str_replace(['/', '\\'], DIRECTORY_SEPARATOR, trim($filepath, '\\/'))
-        ]);
+        $files = [];
+        $paths = glob(implode(DIRECTORY_SEPARATOR, [$this->basePath($path), $suffix]));
 
-        return array_filter(glob(implode(DIRECTORY_SEPARATOR, [$filepath, $suffix])), 'file_exists');
+        foreach ($paths as $path) {
+            if (is_dir($path) && $recursive) $files = array_merge($files, $this->scan($path, $recursive, $suffix));
+            else $files[] = $path;
+        }
+
+        return $files;
     }
 }

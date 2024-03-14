@@ -4,11 +4,11 @@ namespace Debva\Nix;
 
 class Route
 {
+    protected $prefixPath;
+
     public $requestPath;
 
     public $requestMethod;
-
-    protected $prefixPath;
 
     public function __construct()
     {

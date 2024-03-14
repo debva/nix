@@ -85,12 +85,25 @@ if (!function_exists('loadEnv')) {
 if (!function_exists('service')) {
     function service()
     {
-        $services = [];
-        $servicePath = implode(DIRECTORY_SEPARATOR, [basePath(), 'app', 'services']);
+        $storage = nix('storage');
 
-        if (is_dir($servicePath)) {
-            $services = array_filter(glob(implode(DIRECTORY_SEPARATOR, [$servicePath, '*.php'])), 'file_exists');
-        }
+        $debug = env('APP_DEBUG', false);
+
+        $servicePath = 'app/services';
+
+        $serviceCache = 'cache/service.json';
+
+        if (!$debug) $services = json_decode($storage->get($serviceCache), true);
+
+        if ($debug || (!$debug && !$services)) {
+            $services = $storage->scan($storage->basePath($servicePath));
+
+            $services = array_filter($services, function ($service) {
+                return pathinfo($service, PATHINFO_EXTENSION) === 'php';
+            });
+
+            if (!$debug) $storage->save($serviceCache, json_encode($services), true);
+        } else $services = json_decode($storage->get($serviceCache));
 
         $class = nix('anonymous');
 

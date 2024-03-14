@@ -14,14 +14,26 @@ class Response
             }
         }
 
-        if (is_int($code)) {
-            http_response_code($code);
-        }
+        if (is_int($code)) http_response_code($code);
 
-        if ($gzip) {
-            ini_set('zlib.output_compression', 'on');
-        }
+        if ($gzip) ini_set('zlib.output_compression', 'on');
 
-        return json_encode($data);
+        $origin = !empty(getenv('ACCESS_CONTROL_ALLOW_ORIGIN')) ? getenv('ACCESS_CONTROL_ALLOW_ORIGIN') : '*';
+        $methods = !empty(getenv('ACCESS_CONTROL_ALLOW_METHODS')) ?  getenv('ACCESS_CONTROL_ALLOW_METHODS') : 'GET, POST, PATCH, DELETE, OPTIONS';
+        $headers = !empty(getenv('ACCESS_CONTROL_ALLOW_HEADERS')) ?  getenv('ACCESS_CONTROL_ALLOW_HEADERS') : '*';
+        $contentType = is_array($data) || $data instanceof \stdClass ? 'application/json' : 'text/html';
+        $charset = !empty(getenv('CHARSET')) ?  getenv('CHARSET') : 'UTF-8';
+
+        header("Access-Control-Allow-Origin: {$origin}");
+        header("Access-Control-Allow-Methods: {$methods}");
+        header("Access-Control-Allow-Headers: {$headers}");
+        header("Content-Type: {$contentType}; charset={$charset}");
+
+        $class = new \stdClass;
+        $class->buffer = is_array($data) || $data instanceof \stdClass
+            ? json_encode($data)
+            : $data;
+
+        return $class;
     }
 }

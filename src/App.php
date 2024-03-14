@@ -4,227 +4,220 @@ namespace Debva\Nix;
 
 class App extends Bridge
 {
-    protected $appPath = 'app';
-
-    protected $middlewarePath = 'middleware';
-
-    protected $routePath = 'routes';
-
-    protected $servicePath = 'services';
-
     protected $requestPath;
 
     protected $requestMethod;
 
-    protected $verbose = true;
+    protected $storage;
 
-    protected $httpMethod = ['__GET', '__POST', '__PUT', '__PATCH', '__DELETE'];
+    protected $debug;
+
+    protected $middlewarePath = 'app/middleware';
+
+    protected $routePath = 'app/routes';
+
+    protected $middlewareCache = 'cache/middleware.json';
+
+    protected $routeCache = 'cache/routes.json';
+
+    protected $errors = [];
+
+    protected $httpMethod = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
     public function __construct()
     {
         error_reporting(0);
 
-        ini_set('display_errors', 'Off');
-
         set_exception_handler(function ($e) {
-            if ($this->verbose) {
-                $this->verbose = false;
-                $this->handleError('Exception', $e->getMessage(), $e->getCode(), $e->getFile(), $e->getLine(), $e->getTrace());
-            }
-
-            exit(0);
+            $this->errors[] = [
+                'type'      => 'Exception',
+                'code'      => $e->getMessage(),
+                'message'   => $e->getCode(),
+                'file'      => $e->getFile(),
+                'line'      => $e->getLine(),
+                'trace'     => $e->getTrace()
+            ];
         });
 
         set_error_handler(function ($errno, $message, $file, $line) {
-            if ($this->verbose) {
-                $this->verbose = false;
-                $this->handleError('Error', $message, 500, $file, $line);
-            }
-
-            exit(0);
+            $this->errors[] = [
+                'type'      => 'Error',
+                'code'      => $errno,
+                'message'   => $message,
+                'file'      => $file,
+                'line'      => $line,
+                'trace'     => debug_backtrace()
+            ];
         });
 
         register_shutdown_function(function () {
-            if ($this->verbose) {
-                $this->verbose = false;
-                $error = error_get_last();
-
-                if ($error !== null && env('APP_DEBUG')) {
-                    $this->handleError('Fatal Error', $error['message'], 500, $error['file'], $error['line']);
-                }
-            }
-
-            exit(0);
+            $this->handleError();
         });
 
         parent::__construct();
 
-        if (!$this->requestPath) {
+        if (!$this->requestPath || !$this->requestMethod) {
             $route = nix('route');
             $this->requestPath = $route->requestPath;
             $this->requestMethod = $route->requestMethod;
         }
-    }
 
-    public function __get($name)
-    {
-        if ($name === 'service') {
-            return $this->service();
-        }
+        $this->storage = storage();
+
+        $this->debug = env('APP_DEBUG', false);
     }
 
     public function __invoke()
     {
-        $requestPath = array_filter(explode('/', $this->requestPath));
+        $routes = [];
 
-        if (
-            in_array(strtoupper(end($requestPath)), array_merge($this->httpMethod, ['INDEX'])) ||
-            preg_match('/^(' . implode('|', $this->httpMethod) . ')/i', end($requestPath))
-        ) {
-            throw new \Exception('Route not found!', 404);
-        }
+        if (!$this->debug) $routes = json_decode($this->storage->get($this->routeCache));
 
-        $basePath = rtrim(implode(DIRECTORY_SEPARATOR, [basePath(), $this->appPath, $this->routePath, implode(DIRECTORY_SEPARATOR, $requestPath)]), '\/');
-        $actionPath = implode('.', [$basePath, 'php']);
+        if ($this->debug || (!$this->debug && !$routes)) {
+            $basePath = $this->storage->basePath($this->routePath);
 
-        if (!file_exists($actionPath)) {
-            $actionPath = implode(DIRECTORY_SEPARATOR, [$basePath, 'index.php']);
+            $files = $this->storage->scan($this->routePath, true);
 
-            if (!file_exists($actionPath) && empty($requestPath)) {
-                $actionPath = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', $this->routePath, 'welcome.php']);
-                $action = require_once($actionPath);
+            $files = array_filter($files, function ($file) {
+                return pathinfo($file, PATHINFO_EXTENSION) === 'php';
+            });
 
-                print(response($action()));
-                exit(1);
-            }
+            $routes = array_map(function ($action) use ($basePath) {
+                $name = pathinfo($action, PATHINFO_FILENAME);
+                $fullPath = str_replace([$basePath, DIRECTORY_SEPARATOR], ['', '/'], $action);
+                $methods = implode('|', array_map('strtolower', $this->httpMethod));
 
-            if (!file_exists($actionPath)) {
-                if (!in_array('__' . strtoupper($this->requestMethod), $this->httpMethod)) {
-                    throw new \Exception('Route not found!', 404);
+                preg_match("/^__({$methods})(_|$)([^.]+)?/", $name, $matches);
+
+                $name = strtolower(empty($matches) ? $name : (isset($matches[3]) ? $matches[3] : 'index'));
+                $path = implode('/', array_filter([trim(dirname($fullPath), '.'), $name === 'index' ? '' : $name]));
+                $methods = isset($matches[1]) ? [strtoupper($matches[1])] : $this->httpMethod;
+
+                $search = ['{', '}', '-', ' '];
+                $replace = ['', '', '_', '_'];
+
+                $name = trim(implode('-', array_merge(
+                    array_filter(explode('/', str_replace($search, $replace, dirname($fullPath)))),
+                    [str_replace($search, $replace, $name)]
+                )), '-_');
+
+                $params = [];
+                if (preg_match_all('/\{([^}]+)\}/', $path, $matches)) {
+                    $params = array_combine((array) $matches[1], array_map(function ($index) {
+                        return $index;
+                    }, range(1, count((array) $matches[1]))));
                 }
 
-                $actionHttpMethod = '__' . strtolower($this->requestMethod);
-                $matchActionPath = [
-                    "{$actionHttpMethod}_" . end($requestPath) . '.php',
-                    "{$actionHttpMethod}_index.php",
-                    "{$actionHttpMethod}.php"
+                return [
+                    'path'      => $path,
+                    'name'      => $name,
+                    'action'    => $action,
+                    'params'    => $params,
+                    'methods'   => $methods
                 ];
+            }, $files);
 
-                array_walk(
-                    $matchActionPath,
-                    function ($file, $index) use (&$matchActionPath, $basePath) {
-                        $matchActionPath[$index] = implode(DIRECTORY_SEPARATOR, [$index ? $basePath : dirname($basePath), $file]);
+            if (!$this->debug) $this->storage->save($this->routeCache, json_encode($routes), true);
+            $routes = json_decode(json_encode($routes));
+        } else $routes = json_decode($this->storage->get($this->routeCache));
+
+        $action = null;
+
+        foreach ($routes as $route) {
+            if (preg_match_all('/\{([^}]+)\}/', $route->path, $matches)) {
+                foreach ((array) $matches[1] as $param) {
+                    $route->path = str_replace("{{$param}}", '([\w-]+)', $route->path);
+                }
+            }
+
+            $route->path = str_replace('/', '\/', $route->path);
+
+            if (preg_match("/^{$route->path}$/", $path = "/{$this->requestPath}", $matches) && in_array($this->requestMethod, $route->methods)) {
+                $action = json_decode(json_encode([
+                    'name'      => $route->name,
+                    'action'    => $route->action,
+                    'path'      => $path,
+                    'fullPath'  => trim(implode('?', [$path, http_build_query($_GET)]), '?'),
+                    'methods'   => $route->methods,
+                    'params'    => $route->params,
+                    'query'     => $_GET,
+                    'body'      => array_merge($_POST, empty($body = json_decode(file_get_contents("php://input"), true)) ? [] : $body)
+                ]));
+
+                if (isset($action->params)) {
+                    foreach ($action->params as $param => $key) {
+                        $action->params->$param = $matches[$key];
                     }
-                );
-
-                $actionPath = array_filter($matchActionPath, 'file_exists');
-                $actionPath = reset($actionPath);
-
-                if ($actionPath === false) {
-                    throw new \Exception('Route not found!', 404);
                 }
             }
         }
 
-        $action = require_once($actionPath);
+        if (!$action) throw new \Exception('Route not found', 404);
 
-        if (!is_callable($action)) {
-            throw new \Exception('Route is not valid!', 500);
-        }
+        $action = $this->middleware($action, function () use ($action) {
+            $method = require_once($action->action);
 
-        $middleware = $this->middleware(function () use ($action) {
-            $reflection = new \ReflectionFunction($action);
-            $parameter = array_values(request());
-            $parameters = $reflection->getParameters();
+            if (is_callable($method)) {
+                $reflection = new \ReflectionFunction($method);
+                $params = $reflection->getParameters();
 
-            $arguments = [];
-            foreach ($parameters as $index => $param) {
-                $arguments[$index] = isset($parameter[$index]) ? $arguments[$index] = $parameter[$index] : null;
-                if (empty($arguments[$index]) && $param->isDefaultValueAvailable()) $arguments[$index] = $param->getDefaultValue();
+                $args = [];
+                foreach ($action->params as $value) $args[] = $value;
+
+                $args = array_merge($args, count($params) > count($args) ? array_fill(count($args), count($params), null) : []);
+                return $method(...$args);
             }
 
-            return $action(...$arguments);
+            return $method;
         });
 
-        if (!($middleware instanceof \Closure)) $action = $middleware;
-        else $action = $action();
-
-        $this->verbose = false;
-
-        print(is_array($action) ? response($action) : $action);
-        exit(1);
-    }
-
-    private function handleError($type, $message, $code, $file, $line, $trace = [])
-    {
-        if (env('APP_DEBUG', true)) {
-            $response = response([
-                'os'        => PHP_OS,
-                'version'   => 'PHP ' . PHP_VERSION,
-                'type'      => $type,
-                'message'   => $message,
-                'code'      => $code,
-                'file'      => $file,
-                'line'      => $line,
-                'trace'     => $trace
-            ], $code, true);
-        } else {
-            $response = response([
-                'code'      => $code,
-                'message'   => $message,
-            ], $code, true);
+        if (empty($this->errors)) {
+            exit(print(response(is_callable($action) ? $action() : $action)->buffer));
         }
-
-        print($response);
-
-        exit(0);
     }
 
-    private function middleware(\Closure $action)
+    protected function middleware(\stdClass $request, \Closure $action)
     {
-        $middlewares = [];
-        $middlewarePath = implode(DIRECTORY_SEPARATOR, [basePath(), $this->appPath, $this->middlewarePath]);
+        if (!$this->debug) $middlewares = json_decode($this->storage->get($this->middlewareCache), true);
 
-        if (!is_dir($middlewarePath)) return $action;
-        $middlewares = array_filter(glob(implode(DIRECTORY_SEPARATOR, [$middlewarePath, '*.php'])), 'file_exists');
+        if ($this->debug || (!$this->debug && !$middlewares)) {
+            $middlewares = $this->storage->scan($this->storage->basePath($this->middlewarePath));
 
-        $next = function ($middlewares) use (&$next, &$middleware, $action) {
-            if (!empty($middlewares)) {
-                $file = array_shift($middlewares);
-                $middleware = require_once($file);
-                $middleware = $middleware($next);
+            $middlewares = array_filter($middlewares, function ($middleware) {
+                return pathinfo($middleware, PATHINFO_EXTENSION) === 'php';
+            });
 
-                if (!is_callable($middleware)) return $middleware;
+            if (!$this->debug) $this->storage->save($this->middlewareCache, json_encode($middlewares), true);
+        } else $middlewares = json_decode($this->storage->get($this->middlewareCache));
 
-                if ($middleware instanceof \Closure && empty($middlewares)) return $action;
-            }
+        if (!$middlewares) return $action;
 
-            return $next($middlewares);
+        $next = function ($request, $middlewares) use (&$next, $action) {
+            if (!$middlewares) return $action;
+
+            $middleware = array_shift($middlewares);
+            $middleware = require_once($middleware);
+            $middleware = $middleware($next, $request);
+
+            return is_callable($middleware) ? $next($request, $middlewares) : $middleware;
         };
 
-        return $next($middlewares);
+        return $next($request, $middlewares);
     }
 
-    private function service()
+    protected function handleError()
     {
-        $services = [];
-        $servicePath = implode(DIRECTORY_SEPARATOR, [basePath(), $this->appPath, $this->servicePath]);
+        if (!empty($this->errors)) {
+            $buffer = response([
+                'os'        => PHP_OS,
+                'version'   => 'PHP ' . PHP_VERSION,
+                'code'      => 500,
+                'errors'    => $this->errors
+            ], 500)->buffer;
 
-        if (is_dir($servicePath)) {
-            $services = array_filter(glob(implode(DIRECTORY_SEPARATOR, [$servicePath, '*.php'])), 'file_exists');
+            exit(print($buffer));
         }
 
-        $class = nix('anonymous');
-
-        foreach ($services as $service) {
-            $serviceClass = basename($service, '.php');
-            $name = strtolower(preg_replace('/([a-z])([A-Z])|-/', '$1_$2', $serviceClass));
-            $class->macro($name, function ($self, ...$args) use ($service, $serviceClass) {
-                require_once($service);
-                return new $serviceClass(...$args);
-            });
-        }
-
-        return $class;
+        return true;
     }
 }

@@ -102,7 +102,7 @@ class App extends Bridge
                 )), '-_');
 
                 $params = [];
-                if (preg_match_all('/\(([^}]+)\)/', $path, $matches)) {
+                if (preg_match_all('/\(([^)]+)\)/', $path, $matches)) {
                     $params = array_combine((array) $matches[1], array_map(function ($index) {
                         return $index;
                     }, range(1, count((array) $matches[1]))));

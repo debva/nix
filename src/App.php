@@ -30,23 +30,23 @@ class App extends Bridge
 
         set_exception_handler(function ($e) {
             $this->errors[] = [
-                'type'      => 'Exception',
-                'code'      => $e->getMessage(),
-                'message'   => $e->getCode(),
-                'file'      => $e->getFile(),
-                'line'      => $e->getLine(),
-                'trace'     => $e->getTrace()
+                'type'          => 'Exception',
+                'statusCode'    => $e->getCode(),
+                'message'       => $e->getMessage(),
+                'file'          => $e->getFile(),
+                'line'          => $e->getLine(),
+                'trace'         => $e->getTrace()
             ];
         });
 
         set_error_handler(function ($errno, $message, $file, $line) {
             $this->errors[] = [
-                'type'      => 'Error',
-                'code'      => $errno,
-                'message'   => $message,
-                'file'      => $file,
-                'line'      => $line,
-                'trace'     => debug_backtrace()
+                'type'          => 'Error',
+                'statusCode'    => $errno,
+                'message'       => $message,
+                'file'          => $file,
+                'line'          => $line,
+                'trace'         => debug_backtrace()
             ];
         });
 
@@ -171,9 +171,8 @@ class App extends Bridge
             return $method;
         });
 
-        if (empty($this->errors)) {
-            exit(print(response(is_callable($action) ? $action() : $action)->buffer));
-        }
+        $action = is_callable($action) ? $action() : $action;
+        exit(print(response($action)->buffer));
     }
 
     protected function middleware(\stdClass $request, \Closure $action)
@@ -209,10 +208,13 @@ class App extends Bridge
     {
         if (!empty($this->errors)) {
             $buffer = response([
-                'os'        => PHP_OS,
-                'version'   => 'PHP ' . PHP_VERSION,
-                'code'      => 500,
-                'errors'    => $this->errors
+                'os'            => PHP_OS,
+                'version'       => 'PHP ' . PHP_VERSION,
+                'statusCode'    => !empty($this->errors) ? $this->errors[0]['statusCode'] : 0,
+                'message'       => !empty($this->errors) ? $this->errors[0]['message'] : null,
+                'file'          => !empty($this->errors) ? $this->errors[0]['file'] : null,
+                'line'          => !empty($this->errors) ? $this->errors[0]['line'] : null,
+                'errors'        => $this->errors
             ], 500)->buffer;
 
             exit(print($buffer));

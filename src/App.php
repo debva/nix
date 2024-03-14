@@ -124,7 +124,7 @@ class App extends Bridge
         $action = null;
 
         foreach ($routes as $route) {
-            if (preg_match_all('/\{([^}]+)\}/', $route->path, $matches)) {
+            if (preg_match_all('/\(([^)]+)\)/', $route->path, $matches)) {
                 foreach ((array) $matches[1] as $param) {
                     $route->path = str_replace("{{$param}}", '([\w-]+)', $route->path);
                 }

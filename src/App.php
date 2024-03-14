@@ -102,7 +102,7 @@ class App extends Bridge
                 )), '-_');
 
                 $params = [];
-                if (preg_match_all('/\{([^}]+)\}/', $path, $matches)) {
+                if (preg_match_all('/\(([^}]+)\)/', $path, $matches)) {
                     $params = array_combine((array) $matches[1], array_map(function ($index) {
                         return $index;
                     }, range(1, count((array) $matches[1]))));
@@ -126,7 +126,7 @@ class App extends Bridge
         foreach ($routes as $route) {
             if (preg_match_all('/\(([^)]+)\)/', $route->path, $matches)) {
                 foreach ((array) $matches[1] as $param) {
-                    $route->path = str_replace("{{$param}}", '([\w-]+)', $route->path);
+                    $route->path = str_replace("({$param})", '([\w-]+)', $route->path);
                 }
             }
 

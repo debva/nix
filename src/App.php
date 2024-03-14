@@ -126,7 +126,7 @@ class App extends Bridge
         foreach ($routes as $route) {
             if (preg_match_all('/\(([^)]+)\)/', $route->path, $matches)) {
                 foreach ((array) $matches[1] as $param) {
-                    $route->path = str_replace("({$param})", '([\w-]+)', $route->path);
+                    $route->path = str_replace("({$param})", '([\w\s%\-]+)', $route->path);
                 }
             }
 
@@ -146,7 +146,8 @@ class App extends Bridge
 
                 if (isset($action->params)) {
                     foreach ($action->params as $param => $key) {
-                        $action->params->$param = $matches[$key];
+                        $action->params->$param = is_string($matches[$key])
+                            ? urldecode((string) $matches[$key]) : $matches[$key];
                     }
                 }
             }

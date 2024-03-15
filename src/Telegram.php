@@ -20,7 +20,7 @@ class Telegram
 
     public function __construct($token = null)
     {
-        $this->token = $token ? $token : env('TELEGRAM_TOKEN');
+        $this->token = $token ? $token : env('TELEGRAM_TOKEN', '');
         $this->url = "{$this->url}{$this->token}";
     }
 

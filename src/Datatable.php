@@ -57,7 +57,7 @@ class Datatable
                 foreach ($request['search'] as $column => $value) {
                     if (count($searchQuery) > 0) $searchQuery[] = 'OR';
                     $column = $db->buildQuotationMark($this->sanitizeColumn($column));
-                    $searchQuery[] = ["{$table}.{$column}", $whereOperator, $value];
+                    $searchQuery[] = ["{$table}.{$column}", $whereOperator, "%{$value}%"];
                 }
                 $searchQuery = $db->buildConditions(
                     $searchQuery,
@@ -76,7 +76,7 @@ class Datatable
                 foreach ($request['filter'] as $column => $value) {
                     if (count($filterQuery) > 0) $filterQuery[] = 'AND';
                     $column = $db->buildQuotationMark($this->sanitizeColumn($column));
-                    $filterQuery[] = ["{$table}.{$column}", $whereOperator, $value];
+                    $filterQuery[] = ["{$table}.{$column}", $whereOperator, "%{$value}%"];
                 }
                 $filterQuery = $db->buildConditions(
                     $filterQuery,

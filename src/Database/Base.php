@@ -24,6 +24,8 @@ abstract class Base
 
     protected $bindingSymbol;
 
+    protected $bindingVariable;
+
     protected $level = 0;
 
     protected $currentLevel = null;
@@ -48,8 +50,6 @@ abstract class Base
 
     abstract protected function getLogicalOperator();
 
-    abstract protected function getDataType($type);
-
     abstract protected function getBeginTransaction($connection);
 
     abstract protected function getInTransaction($connection);
@@ -69,6 +69,10 @@ abstract class Base
     abstract protected function getFetchAll($statement);
 
     abstract protected function getLastInsertId($connection);
+
+    abstract public function getDataType($type);
+
+    abstract public function cast($value, $dataType);
 
     abstract public function create($table, $data = []);
 
@@ -94,12 +98,6 @@ abstract class Base
         $this->dsn = $this->setDSN($connection, $host, $port, $dbname, $user, $password);
 
         $this->connection = $this->setConnection($this->dsn, $user, $password);
-    }
-
-    public function __destruct()
-    {
-        if (!$this->getConnection()) throw new \Exception('Connection have not been set', 500);
-        $this->setDestroyConnection($this->getConnection());
     }
 
     public function getConnection()
@@ -164,11 +162,11 @@ abstract class Base
     public function buildPlaceholder(&$indexBinding = 0, $data = [], $prefixBindingName = null)
     {
         if (empty($data)) {
-            if (!$this->bindingSymbol) throw new \Exception('Binding symbol have not been set', 500);
+            if (!$this->bindingSymbol && !$this->bindingVariable) throw new \Exception('Binding symbol or variable have not been set', 500);
 
             $indexBinding++;
             return is_null($prefixBindingName)
-                ? str_replace('{symbol}', $indexBinding, $this->bindingSymbol)
+                ? str_replace($this->bindingVariable, $indexBinding, "{$this->bindingSymbol}{$this->bindingVariable}")
                 : ":{$prefixBindingName}_{$indexBinding}";
         }
 
@@ -177,12 +175,10 @@ abstract class Base
         return implode(', ', array_map(function ($value) use (&$indexBinding, $prefixBindingName) {
             if ($value instanceof \stdClass) {
                 $bindingSymbol = $value->bindings ? $this->buildPlaceholder($indexBinding, [], $prefixBindingName) : '';
-                return str_replace('{symbol}', $bindingSymbol, $value->query);
+                return str_replace($this->bindingVariable, $bindingSymbol, $value->query);
             }
 
-            $bindingSymbol = $this->buildPlaceholder($indexBinding, [], $prefixBindingName);
-            $type = gettype($value);
-            return $this->withCast ? "CAST({$bindingSymbol} AS {$this->getDataType($type)})" : $bindingSymbol;
+            return $this->buildPlaceholder($indexBinding, [], $prefixBindingName);
         }, array_values($data)));
     }
 
@@ -247,6 +243,8 @@ abstract class Base
             if (count($condition) < 3) list($column, $value) = $condition;
             else list($column, $operator, $value) = $condition;
 
+            if ($column instanceof \stdClass) $column = str_replace($this->bindingVariable, $column->bindings, $column->query);
+
             if (!in_array($operator, $this->getOperator())) {
                 throw new \Exception("Operator {$operator} not supported", 500);
             }
@@ -291,8 +289,9 @@ abstract class Base
                 if ($value->bindings) $bindings[] = $value->bindings;
             } else $bindings[] = $value;
 
+            $column = $this->buildQuotationMark($column, $withQuotationMark);
             $placeholder = $this->buildPlaceholder($indexBinding, [$column => $value], $prefixBindingName);
-            return trim("{$logicalOperator} {$this->buildQuotationMark($column,$withQuotationMark)} {$operator} {$placeholder}");
+            return trim("{$logicalOperator} {$column} {$operator} {$placeholder}");
         }, $query, $logicalOperator);
 
         return [
@@ -340,11 +339,6 @@ abstract class Base
         $class->query = $query;
         $class->bindings = $bindings;
         return $class;
-    }
-
-    public function cast($value, $dataType)
-    {
-        return $this->raw("CAST({symbol} AS {$dataType})", $value);
     }
 
     public function query($query, $bindings = [], $execute = false)

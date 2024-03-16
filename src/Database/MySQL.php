@@ -12,6 +12,8 @@ class MySQL extends Base
 
     protected $bindingSymbol = '?';
 
+    protected $bindingVariable = '';
+
     public function __construct($connection = null)
     {
         parent::__construct($connection);
@@ -49,16 +51,6 @@ class MySQL extends Base
     protected function getLogicalOperator()
     {
         return  ['AND', 'OR', 'NOT'];
-    }
-
-    protected function getDataType($type)
-    {
-        $types = [
-            'string'    => 'CHAR',
-            'int'       => 'SIGNED',
-        ];
-
-        return isset($types[$type]) ? $types[$type] : $types['int'];
     }
 
     protected function getBeginTransaction($connection)
@@ -123,6 +115,21 @@ class MySQL extends Base
     protected function getLastInsertId($connection)
     {
         return $this->getPrimaryKey() ? $connection->lastInsertId($this->primaryKey) : null;
+    }
+
+    public function getDataType($type)
+    {
+        $types = [
+            'string'    => 'CHAR',
+            'int'       => 'SIGNED',
+        ];
+
+        return isset($types[$type]) ? $types[$type] : $types['int'];
+    }
+
+    public function cast($value, $dataType)
+    {
+        return $this->raw("CAST({$this->bindingVariable} AS {$dataType})", $value);
     }
 
     public function create($table, $data = [])

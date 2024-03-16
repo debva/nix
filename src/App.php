@@ -158,7 +158,10 @@ class App extends Bridge
 
         $action = $this->middleware($action, function () use ($action) {
             if (!file_exists($action->action)) throw new \Exception('File action not found', 500);
+
             $method = require_once($action->action);
+            $class = new \stdClass;
+            $class->method = $method;
 
             if (is_callable($method)) {
                 $reflection = new \ReflectionFunction($method);
@@ -168,15 +171,18 @@ class App extends Bridge
                 foreach ($action->params as $value) $args[] = $value;
 
                 $args = array_merge($args, count($params) > count($args) ? array_fill(count($args), count($params), null) : []);
-                return $method(...$args);
+                $class->args = $args;
             }
 
-            return $method;
+            return $class;
         });
 
-        $action = is_callable($action) ? $action() : $action;
+        $action = $action();
 
-        if (empty($this->errors)) exit(print(response($action)->buffer));
+        if (empty($this->errors)) exit(print(response(
+            property_exists($action, 'args') ? ($action->method)(...$action->args) : $action->method
+        )->buffer));
+
         exit(0);
     }
 

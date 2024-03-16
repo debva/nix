@@ -10,7 +10,9 @@ class PostgreSQL extends Base
 
     protected $whereOperator = 'ILIKE';
 
-    protected $bindingSymbol = '${symbol}';
+    protected $bindingSymbol = '$';
+
+    protected $bindingVariable = '{VAR}';
 
     public function __construct($connection = null)
     {
@@ -46,16 +48,6 @@ class PostgreSQL extends Base
     protected function getLogicalOperator()
     {
         return  ['AND', 'OR', 'NOT'];
-    }
-
-    protected function getDataType($type)
-    {
-        $types = [
-            'string'    => 'VARCHAR',
-            'int'       => 'INT',
-        ];
-
-        return isset($types[$type]) ? $types[$type] : $types['int'];
     }
 
     protected function getBeginTransaction($connection)
@@ -110,6 +102,21 @@ class PostgreSQL extends Base
     protected function getLastInsertId($connection)
     {
         return $this->getPrimaryKey() ? pg_fetch_result($connection, 0) : null;
+    }
+
+    public function getDataType($type)
+    {
+        $types = [
+            'string'    => 'VARCHAR',
+            'int'       => 'INT',
+        ];
+
+        return isset($types[$type]) ? $types[$type] : $types['int'];
+    }
+
+    public function cast($value, $dataType)
+    {
+        return $this->raw("CAST({$this->bindingVariable} AS {$dataType})", $value);
     }
 
     public function create($table, $data = [])

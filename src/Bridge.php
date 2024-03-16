@@ -14,6 +14,10 @@ abstract class Bridge extends Environment
             throw new \Exception('Constants NIX_START must be defined first!', 500);
         }
 
+        date_default_timezone_set(env('DATE_TIMEZONE', 'Asia/Jakarta'));
+
+        parent::__construct();
+
         $origin = !empty(getenv('ACCESS_CONTROL_ALLOW_ORIGIN')) ? getenv('ACCESS_CONTROL_ALLOW_ORIGIN') : '*';
         $methods = !empty(getenv('ACCESS_CONTROL_ALLOW_METHODS')) ?  getenv('ACCESS_CONTROL_ALLOW_METHODS') : 'GET, POST, PATCH, DELETE, OPTIONS';
         $headers = !empty(getenv('ACCESS_CONTROL_ALLOW_HEADERS')) ?  getenv('ACCESS_CONTROL_ALLOW_HEADERS') : 'Content-Type, Authorization';
@@ -23,13 +27,9 @@ abstract class Bridge extends Environment
         header("Access-Control-Allow-Headers: {$headers}");
 
         if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == "OPTIONS") {
-            header("HTTP/1.1 200 OK");
-            exit(0);
+            http_response_code(200);
+            exit(1);
         }
-
-        parent::__construct();
-
-        date_default_timezone_set(env('DATE_TIMEZONE', 'Asia/Jakarta'));
     }
 
     public function loadtime()

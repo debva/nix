@@ -57,7 +57,7 @@ class Datatable
                 foreach ($request['search'] as $column => $value) {
                     if (count($searchQuery) > 0) $searchQuery[] = 'OR';
                     $column = $db->buildQuotationMark($this->sanitizeColumn($column));
-                    $searchQuery[] = ["{$table}.{$column}", $whereOperator, "%{$value}%"];
+                    $searchQuery[] = [$db->cast("{$table}.{$column}", $db->getDataType('string')), $whereOperator, "%{$value}%"];
                 }
                 $searchQuery = $db->buildConditions(
                     $searchQuery,
@@ -76,7 +76,7 @@ class Datatable
                 foreach ($request['filter'] as $column => $value) {
                     if (count($filterQuery) > 0) $filterQuery[] = 'AND';
                     $column = $db->buildQuotationMark($this->sanitizeColumn($column));
-                    $filterQuery[] = ["{$table}.{$column}", $whereOperator, "%{$value}%"];
+                    $filterQuery[] = [$db->cast("{$table}.{$column}", $db->getDataType('string')), $whereOperator, "%{$value}%"];
                 }
                 $filterQuery = $db->buildConditions(
                     $filterQuery,
@@ -115,12 +115,12 @@ class Datatable
 
             $data = $db->query(trim("SELECT COUNT(*) FROM ({$query}) AS {$table}"), $originalBindings);
             $this->total = (int) $data->column();
-            
+
             if (!empty($whereQuery)) {
                 $data = $db->query(trim("SELECT COUNT(*) FROM ({$query}) AS {$table} {$whereQuery}"), $bindings);
                 $this->totalFiltered = (int) $data->column();
             }
-            
+
             $query = trim("({$query}) AS {$table} {$whereQuery} {$orderQuery}");
             $data = $db->query(trim("SELECT * FROM {$query} LIMIT {$this->limit} OFFSET {$this->offset}"), $bindings);
             $this->data = $data->get();

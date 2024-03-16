@@ -16,7 +16,7 @@ abstract class Bridge extends Environment
 
         $origin = !empty(getenv('ACCESS_CONTROL_ALLOW_ORIGIN')) ? getenv('ACCESS_CONTROL_ALLOW_ORIGIN') : '*';
         $methods = !empty(getenv('ACCESS_CONTROL_ALLOW_METHODS')) ?  getenv('ACCESS_CONTROL_ALLOW_METHODS') : 'GET, POST, PATCH, DELETE, OPTIONS';
-        $headers = !empty(getenv('ACCESS_CONTROL_ALLOW_HEADERS')) ?  getenv('ACCESS_CONTROL_ALLOW_HEADERS') : '*';
+        $headers = !empty(getenv('ACCESS_CONTROL_ALLOW_HEADERS')) ?  getenv('ACCESS_CONTROL_ALLOW_HEADERS') : 'Content-Type, Authorization';
 
         header("Access-Control-Allow-Origin: {$origin}");
         header("Access-Control-Allow-Methods: {$methods}");

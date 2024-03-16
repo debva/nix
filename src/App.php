@@ -177,10 +177,12 @@ class App extends Bridge
             return $class;
         });
 
-        $action = $action();
+        $action = is_callable($action) ? $action() : $action;
 
         if (empty($this->errors)) exit(print(response(
-            property_exists($action, 'args') ? ($action->method)(...$action->args) : $action->method
+            $action instanceof \stdClass
+                ? (property_exists($action, 'args') ? ($action->method)(...$action->args) : $action->method)
+                : $action
         )->buffer));
 
         exit(0);

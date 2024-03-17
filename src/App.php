@@ -127,13 +127,14 @@ class App extends Bridge
         foreach ($routes as $route) {
             if (preg_match_all('/\(([^)]+)\)/', $route->path, $matches)) {
                 foreach ((array) $matches[1] as $param) {
-                    $route->path = str_replace("({$param})", '([\w\s%\-]+)', $route->path);
+                    $route->path = str_replace("({$param})", '([\w\s%\~\-\_]+)', $route->path);
                 }
             }
 
             $route->path = str_replace('/', '\/', $route->path);
+            $path = "/{$this->requestPath}";
 
-            if (preg_match("/^{$route->path}$/", $path = "/{$this->requestPath}", $matches) && in_array($this->requestMethod, $route->methods)) {
+            if (preg_match("/^{$route->path}$/", $path, $matches) && in_array($this->requestMethod, $route->methods)) {
                 $action = json_decode(json_encode([
                     'name'      => $route->name,
                     'action'    => $route->action,

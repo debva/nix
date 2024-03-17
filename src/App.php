@@ -178,12 +178,11 @@ class App extends Bridge
         });
 
         $action = $action instanceof \Closure ? $action() : $action;
+        $action = $action instanceof \stdClass
+            ? (property_exists($action, 'args') ? ($action->method)(...$action->args) : $action->method)
+            : $action;
 
-        if (empty($this->errors)) exit(print(response(
-            $action instanceof \stdClass
-                ? (property_exists($action, 'args') ? ($action->method)(...$action->args) : $action->method)
-                : $action
-        )->buffer));
+        if (empty($this->errors)) exit(print(response($action)->buffer));
 
         exit(0);
     }

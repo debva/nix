@@ -10,9 +10,9 @@ class PostgreSQL extends Base
 
     protected $whereOperator = 'ILIKE';
 
-    protected $bindingSymbol = '$';
+    protected $bindingSymbol = '?';
 
-    protected $bindingVariable = '{VAR}';
+    protected $bindingVariable = '';
 
     public function __construct($connection = null)
     {

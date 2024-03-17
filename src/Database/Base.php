@@ -100,6 +100,12 @@ abstract class Base
         $this->connection = $this->setConnection($this->dsn, $user, $password);
     }
 
+    public function __destruct()
+    {
+        if (!$this->getConnection()) throw new \Exception('Connection have not been set', 500);
+        $this->setDestroyConnection($this->getConnection());
+    }
+
     public function getConnection()
     {
         return $this->connection;

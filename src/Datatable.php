@@ -26,6 +26,10 @@ class Datatable
 
     protected $namingFilterBindings = 'NIX_DT_FILTER';
 
+    protected $namingLimitBindings = 'NIX_DT_LIMIT';
+
+    protected $namingOffsetBindings = 'NIX_DT_OFFSET';
+
     public function __construct($data = [])
     {
         $request = request('datatable');

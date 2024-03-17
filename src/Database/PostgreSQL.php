@@ -21,17 +21,21 @@ class PostgreSQL extends Base
 
     protected function setDSN($connection, $host, $port, $dbname, $user, $password)
     {
-        return "host={$host} port={$port} dbname={$dbname} user={$user} password={$password}";
+        return "{$connection}:host={$host};port={$port};dbname={$dbname}";
     }
 
     protected function setConnection($dsn, $user, $password)
     {
-        return pg_connect($dsn);
+        return new \PDO($dsn, $user, $password, [
+            \PDO::ATTR_ERRMODE              => \PDO::ERRMODE_EXCEPTION,
+            \PDO::ATTR_DEFAULT_FETCH_MODE   => \PDO::FETCH_ASSOC,
+            \PDO::ATTR_EMULATE_PREPARES     => true,
+        ]);
     }
 
     protected function setDestroyConnection($connection)
     {
-        return pg_close($connection);
+        $this->connection = null;
     }
 
     protected function getOperator()
@@ -52,56 +56,66 @@ class PostgreSQL extends Base
 
     protected function getBeginTransaction($connection)
     {
-        return pg_query($connection, 'BEGIN');
+        return $connection->beginTransaction();
     }
 
     protected function getInTransaction($connection)
     {
-        $result = pg_query($connection, 'SELECT NOW() = STATEMENT_TIMESTAMP()');
-        $result = pg_fetch_result($result, 0);
-        return $result === 'f' ? true : false;
+        return $connection->inTransaction();
     }
 
     protected function getCommit($connection)
     {
-        return pg_query($connection, 'COMMIT');
+        return $connection->commit();
     }
 
     protected function getRollBack($connection)
     {
-        return pg_query($connection, 'ROLLBACK');
+        return $connection->rollBack();
     }
 
     protected function getPrepare($connection, $query)
     {
-        $stmtname = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 25);
-        pg_prepare($connection, $stmtname, $query);
-        return $stmtname;
+        return $connection->prepare($query);
     }
 
     protected function getExecute($connection, $statement, $bindings)
     {
-        return pg_execute($connection, $statement, $bindings);
+        $params = [
+            'NULL'      => \PDO::PARAM_NULL,
+            'integer'   => \PDO::PARAM_INT,
+            'string'    => \PDO::PARAM_STR,
+            'boolean'   => \PDO::PARAM_BOOL,
+        ];
+
+        foreach ($bindings as $key => &$value) {
+            $type = gettype($value);
+            $type = in_array($type, array_keys($params)) ? $params[$type] : $params['string'];
+            $statement->bindParam((is_int($key) ? $key + 1 : $key), $value, $type);
+        }
+
+        $statement->execute();
+        return $statement;
     }
 
     protected function getFetchColumn($statement)
     {
-        return pg_fetch_result($statement, 0);
+        return $statement->fetchColumn();
     }
 
     protected function getFetch($statement)
     {
-        return pg_fetch_assoc($statement);
+        return $statement->fetch();
     }
 
     protected function getFetchAll($statement)
     {
-        return pg_fetch_all($statement);
+        return $statement->fetchAll();
     }
 
     protected function getLastInsertId($connection)
     {
-        return $this->getPrimaryKey() ? pg_fetch_result($connection, 0) : null;
+        return $this->getPrimaryKey() ? $this->getFetchColumn($connection) : null;
     }
 
     public function getDataType($type)

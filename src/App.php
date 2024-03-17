@@ -122,7 +122,7 @@ class App extends Bridge
             $routes = json_decode(json_encode($routes));
         } else $routes = json_decode($this->storage->get($this->routeCache));
 
-        $action = null;
+        $request = null;
 
         foreach ($routes as $route) {
             if (preg_match_all('/\(([^)]+)\)/', $route->path, $matches)) {
@@ -131,11 +131,10 @@ class App extends Bridge
                 }
             }
 
-            $route->path = str_replace('/', '\/', $route->path);
-            $path = "/{$this->requestPath}";
+            $route->path = str_replace('/', '\/', $route->path);;
 
-            if (preg_match("/^{$route->path}$/", $path, $matches) && in_array($this->requestMethod, $route->methods)) {
-                $action = json_decode(json_encode([
+            if (preg_match("/^{$route->path}$/", ($path = "/{$this->requestPath}"), $matches) && in_array($this->requestMethod, $route->methods)) {
+                $request = json_decode(json_encode([
                     'name'      => $route->name,
                     'action'    => $route->action,
                     'path'      => $path,
@@ -146,21 +145,21 @@ class App extends Bridge
                     'body'      => array_merge($_POST, empty($body = json_decode(file_get_contents("php://input"), true)) ? [] : $body)
                 ]));
 
-                if (isset($action->params)) {
-                    foreach ($action->params as $param => $key) {
-                        $action->params->$param = is_string($matches[$key])
+                if (isset($request->params)) {
+                    foreach ($request->params as $param => $key) {
+                        $request->params->$param = is_string($matches[$key])
                             ? urldecode((string) $matches[$key]) : $matches[$key];
                     }
                 }
             }
         }
 
-        if (!$action) throw new \Exception('Route not found', 404);
+        if (!$request) throw new \Exception('Route not found', 404);
 
-        $action = $this->middleware($action, function () use ($action) {
-            if (!file_exists($action->action)) throw new \Exception('File action not found', 500);
+        $action = $this->middleware($request, function () use ($request) {
+            if (!file_exists($request->action)) throw new \Exception('File action not found', 500);
 
-            $method = require_once($action->action);
+            $method = require_once($request->action);
             $class = new \stdClass;
             $class->method = $method;
 
@@ -169,7 +168,7 @@ class App extends Bridge
                 $params = $reflection->getParameters();
 
                 $args = [];
-                foreach ($action->params as $value) $args[] = $value;
+                foreach ($request->params as $value) $args[] = $value;
 
                 $args = array_merge($args, count($params) > count($args) ? array_fill(count($args), count($params), null) : []);
                 $class->args = $args;
@@ -178,7 +177,7 @@ class App extends Bridge
             return $class;
         });
 
-        $action = is_callable($action) ? $action() : $action;
+        $action = $action instanceof \Closure ? $action() : $action;
 
         if (empty($this->errors)) exit(print(response(
             $action instanceof \stdClass
@@ -210,9 +209,9 @@ class App extends Bridge
 
             $middleware = array_shift($middlewares);
             $middleware = require_once($middleware);
-            $middleware = $middleware($next, $request);
+            $next = $middleware($next, $request);
 
-            return is_callable($middleware) ? $next($request, $middlewares) : $middleware;
+            return $next instanceof \Closure ? $next($request, $middlewares) : $next;
         };
 
         return $next($request, $middlewares);

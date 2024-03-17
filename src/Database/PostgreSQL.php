@@ -116,7 +116,7 @@ class PostgreSQL extends Base
 
     public function cast($value, $dataType)
     {
-        return $this->raw("CAST({$this->bindingVariable} AS {$dataType})", $value);
+        return $this->raw("CAST({$this->bindingSymbol}{$this->bindingVariable} AS {$dataType})", $value);
     }
 
     public function create($table, $data = [])

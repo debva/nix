@@ -175,7 +175,7 @@ abstract class Base
         return implode(', ', array_map(function ($value) use (&$indexBinding, $prefixBindingName) {
             if ($value instanceof \stdClass) {
                 $bindingSymbol = $value->bindings ? $this->buildPlaceholder($indexBinding, [], $prefixBindingName) : '';
-                return str_replace($this->bindingVariable, $bindingSymbol, $value->query);
+                return str_replace("{$this->bindingSymbol}{$this->bindingVariable}", $bindingSymbol, $value->query);
             }
 
             return $this->buildPlaceholder($indexBinding, [], $prefixBindingName);
@@ -243,7 +243,7 @@ abstract class Base
             if (count($condition) < 3) list($column, $value) = $condition;
             else list($column, $operator, $value) = $condition;
 
-            if ($column instanceof \stdClass) $column = str_replace($this->bindingVariable, $column->bindings, $column->query);
+            if ($column instanceof \stdClass) $column = str_replace("{$this->bindingSymbol}{$this->bindingVariable}", $column->bindings, $column->query);
 
             if (!in_array($operator, $this->getOperator())) {
                 throw new \Exception("Operator {$operator} not supported", 500);

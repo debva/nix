@@ -257,9 +257,11 @@ abstract class Base
                     $in = [];
                     foreach ($value as $item) {
                         $in[] = $this->buildPlaceholder($indexBinding, [$column => $item], $prefixBindingName);
+                        $bindingName = $prefixBindingName ? "{$prefixBindingName}_{$indexBinding}" : null;
+
                         if ($item instanceof \stdClass) {
-                            if ($item->bindings) $bindings[] = $item->bindings;
-                        } else $bindings[] = $item;
+                            if ($item->bindings) $bindings = array_merge($bindings, $bindingName ? [$bindingName => $item->bindings] : [$item->bindings]);
+                        } else $bindings = array_merge($bindings, $bindingName ? [$bindingName => $item] : [$item]);
                     }
 
                     $in = implode(', ', $in);
@@ -270,27 +272,32 @@ abstract class Base
                     if (!is_array($value) || count($value) < 3) throw new \Exception("{$operator} have invalid values", 500);
                     list($value1, $logical, $value2) = $value;
 
+                    $placeholder1 = $this->buildPlaceholder($indexBinding, [$column => $value1], $prefixBindingName);
+                    $bindingName = $prefixBindingName ? "{$prefixBindingName}_{$indexBinding}" : null;
+
                     if ($value1 instanceof \stdClass) {
-                        if ($value1->bindings) $bindings[] = $value1->bindings;
-                    } else $bindings[] = $value1;
+                        if ($value1->bindings) $bindings = array_merge($bindings, $bindingName ? [$bindingName => $value1->bindings] : [$value1->bindings]);
+                    } else $bindings = array_merge($bindings, $bindingName ? [$bindingName => $value1] : [$value1]);
+
+                    $placeholder2 = $this->buildPlaceholder($indexBinding, [$column => $value2], $prefixBindingName);
+                    $bindingName = $prefixBindingName ? "{$prefixBindingName}_{$indexBinding}" : null;
 
                     if ($value2 instanceof \stdClass) {
-                        if ($value2->bindings) $bindings[] = $value2->bindings;
-                    } else $bindings[] = $value2;
-
-                    $placeholder1 = $this->buildPlaceholder($indexBinding, [$column => $value1], $prefixBindingName);
-                    $placeholder2 = $this->buildPlaceholder($indexBinding, [$column => $value2], $prefixBindingName);
+                        if ($value2->bindings) $bindings = array_merge($bindings, $bindingName ? [$bindingName => $value2->bindings] : [$value2->bindings]);
+                    } else $bindings = array_merge($bindings, $bindingName ? [$bindingName => $value2] : [$value2]);
 
                     return trim("{$logicalOperator} {$this->buildQuotationMark($column,$withQuotationMark)} {$operator} {$placeholder1} {$logical} {$placeholder2}");
                 }
             }
 
-            if ($value instanceof \stdClass) {
-                if ($value->bindings) $bindings[] = $value->bindings;
-            } else $bindings[] = $value;
-
             $column = $this->buildQuotationMark($column, $withQuotationMark);
             $placeholder = $this->buildPlaceholder($indexBinding, [$column => $value], $prefixBindingName);
+            $bindingName = $prefixBindingName ? "{$prefixBindingName}_{$indexBinding}" : null;
+
+            if ($value instanceof \stdClass) {
+                if ($value->bindings) $bindings = array_merge($bindings, $bindingName ? [$bindingName => $value->bindings] : [$value->bindings]);
+            } else $bindings = array_merge($bindings, $bindingName ? [$bindingName => $value] : [$value]);
+
             return trim("{$logicalOperator} {$column} {$operator} {$placeholder}");
         }, $query, $logicalOperator);
 

@@ -121,8 +121,20 @@ class Datatable
                 $this->totalFiltered = (int) $data->column();
             }
 
+            $placeholderLimit = $db->buildPlaceholder($indexBinding, [], $isNamedBindingType ? $this->namingLimitBindings : null);
+            $namingLimitBindings = "{$this->namingLimitBindings}_{$indexBinding}";
+
+            $placeholderOffset = $db->buildPlaceholder($indexBinding, [], $isNamedBindingType ? $this->namingOffsetBindings : null);
+            $namingOffsetBindings = "{$this->namingOffsetBindings}_{$indexBinding}";
+
+            $bindings = array_merge(
+                $bindings,
+                $isNamedBindingType ? [$namingLimitBindings => $this->limit] : [$this->limit],
+                $isNamedBindingType ? [$namingOffsetBindings => $this->offset] : [$this->offset],
+            );
+
             $query = trim("({$query}) AS {$table} {$whereQuery} {$orderQuery}");
-            $data = $db->query(trim("SELECT * FROM {$query} LIMIT {$this->limit} OFFSET {$this->offset}"), $bindings);
+            $data = $db->query(trim("SELECT * FROM {$query} LIMIT {$placeholderLimit} OFFSET {$placeholderOffset}"), $bindings);
             $this->data = $data->get();
         } else {
             $data = (empty($data) || !is_array($data)) ? [] : $data;

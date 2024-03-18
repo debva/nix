@@ -14,12 +14,14 @@ class Authentication extends Authorization
     {
         $headers = getallheaders();
 
+        $headers = array_change_key_case($headers, CASE_LOWER);
+
         $this->crypt = nix('crypt');
 
         $this->token = null;
 
-        if (isset($headers['Authorization'])) {
-            preg_match('/Bearer\s(\S+)/', urldecode($headers['Authorization']), $matches);
+        if (isset($headers['authorization'])) {
+            preg_match('/Bearer\s(\S+)/', urldecode($headers['authorization']), $matches);
             $this->token = $matches[1];
         }
     }

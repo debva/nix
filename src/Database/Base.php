@@ -150,12 +150,21 @@ abstract class Base
     {
         if (!is_array($bindings)) $bindings = [$bindings];
 
-        $bindings = array_map(function ($bindings) {
-            return $bindings instanceof \stdClass ? $bindings->bindings : $bindings;
-        }, array_filter($bindings, function ($bindings) {
+        $isNamedBindingType = empty($bindings) ? false : array_reduce(array_keys($bindings), function ($carry, $key) {
+            return $carry && is_string($key);
+        }, true);
+
+        $filter = array_filter($bindings, function ($bindings) {
             $instance = $bindings instanceof \stdClass;
             return !$instance || ($instance && $bindings->bindings);
-        }));
+        });
+
+        $filter = $isNamedBindingType ? $filter : array_values($filter);
+
+        $bindings = array_map(function ($bindings) {
+            return $bindings instanceof \stdClass ? $bindings->bindings : $bindings;
+        }, $filter);
+
         return $bindings;
     }
 

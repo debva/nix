@@ -162,7 +162,7 @@ class PostgreSQL extends Base
             return $result;
         } catch (\Exception $e) {
             $this->rollBack($level);
-            throw new \Exception($e->getMessage(), $e->getCode());
+            throw new \Exception($e->getMessage(), is_int($e->getCode()) ? $e->getCode() : 500);
         }
     }
 
@@ -199,7 +199,7 @@ class PostgreSQL extends Base
             return true;
         } catch (\Exception $e) {
             $this->rollBack($level);
-            throw new \Exception($e->getMessage(), $e->getCode());
+            throw new \Exception($e->getMessage(), is_int($e->getCode()) ? $e->getCode() : 500);
         }
     }
 
@@ -226,7 +226,7 @@ class PostgreSQL extends Base
             return $result;
         } catch (\Exception $e) {
             $this->rollBack($level);
-            throw new \Exception($e->getMessage(), $e->getCode());
+            throw new \Exception($e->getMessage(), is_int($e->getCode()) ? $e->getCode() : 500);
         }
     }
 
@@ -285,7 +285,7 @@ class PostgreSQL extends Base
             return $result;
         } catch (\Exception $e) {
             $this->rollBack($level);
-            throw new \Exception($e->getMessage(), $e->getCode());
+            throw new \Exception($e->getMessage(), is_int($e->getCode()) ? $e->getCode() : 500);
         }
     }
 }

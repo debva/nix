@@ -89,7 +89,7 @@ class Datatable
                     $isNamedBindingType
                         ? $this->namingFilterBindings : null
                 );
-                $bindings = array_merge($bindings, $searchQuery['bindings']);
+                $bindings = array_merge($bindings, $filterQuery['bindings']);
                 $filterQuery = $filterQuery['query'];
             }
 

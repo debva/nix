@@ -59,9 +59,16 @@ class Datatable
             if (!empty($request['search']) && is_array($request['search'])) {
                 $searchQuery = [];
                 foreach ($request['search'] as $column => $value) {
-                    if (count($searchQuery) > 0) $searchQuery[] = 'OR';
                     $column = $db->buildQuotationMark($this->sanitizeColumn($column));
-                    $searchQuery[] = [$db->cast("{$table}.{$column}", $db->getDataType('string')), $whereOperator, "%{$value}%"];
+                    if (is_array($value)) {
+                        foreach ($value as $v) {
+                            if (count($searchQuery) > 0) $searchQuery[] = 'OR';
+                            $searchQuery[] = [$db->cast("{$table}.{$column}", $db->getDataType('string')), $whereOperator, "%{$v}%"];
+                        }
+                    } else {
+                        if (count($searchQuery) > 0) $searchQuery[] = 'OR';
+                        $searchQuery[] = [$db->cast("{$table}.{$column}", $db->getDataType('string')), $whereOperator, "%{$value}%"];
+                    }
                 }
                 $searchQuery = $db->buildConditions(
                     $searchQuery,
@@ -78,9 +85,16 @@ class Datatable
             if (!empty($request['filter']) && is_array($request['filter'])) {
                 $filterQuery = [];
                 foreach ($request['filter'] as $column => $value) {
-                    if (count($filterQuery) > 0) $filterQuery[] = 'AND';
                     $column = $db->buildQuotationMark($this->sanitizeColumn($column));
-                    $filterQuery[] = [$db->cast("{$table}.{$column}", $db->getDataType('string')), $whereOperator, "%{$value}%"];
+                    if (is_array($value)) {
+                        foreach ($value as $v) {
+                            if (count($filterQuery) > 0) $filterQuery[] = 'AND';
+                            $filterQuery[] = [$db->cast("{$table}.{$column}", $db->getDataType('string')), $whereOperator, "%{$v}%"];
+                        }
+                    } else {
+                        if (count($filterQuery) > 0) $filterQuery[] = 'AND';
+                        $filterQuery[] = [$db->cast("{$table}.{$column}", $db->getDataType('string')), $whereOperator, "%{$value}%"];
+                    }
                 }
                 $filterQuery = $db->buildConditions(
                     $filterQuery,

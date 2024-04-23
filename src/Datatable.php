@@ -243,9 +243,7 @@ class Datatable
 
         return array_map(function ($data) {
             foreach (array_keys($this->editColumns) as $column) {
-                if (in_array($column, array_keys($data))) {
-                    $data[$column] = $this->editColumns[$column]($data);
-                }
+                $data[$column] = $this->editColumns[$column]($data);
             }
 
             return $data;
@@ -258,9 +256,7 @@ class Datatable
 
         $data = array_map(function ($data) {
             foreach (array_keys($this->editColumns) as $column) {
-                if (in_array($column, array_keys($data))) {
-                    $data[$column] = $this->editColumns[$column]($data);
-                }
+                $data[$column] = $this->editColumns[$column]($data);
             }
 
             return $data;

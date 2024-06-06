@@ -146,10 +146,14 @@ class MySQL extends Base
             } else {
                 $indexBinding = 0;
 
+                $table = implode('.', array_map(function ($table) {
+                    return $this->buildQuotationMark($table);
+                }, array_filter(explode('.', $table))));
+
                 $fields = $this->buildFields($data);
                 $values = $this->buildPlaceholder($indexBinding, $data);
 
-                $query = "INSERT INTO {$this->buildQuotationMark($table)} ({$fields}) VALUES ($values)";
+                $query = "INSERT INTO {$table} ({$fields}) VALUES ($values)";
                 $query = $this->query($query, array_values($data), true);
 
                 $result = $this->getLastInsertId($this->getConnection());
@@ -185,10 +189,14 @@ class MySQL extends Base
             } else {
                 $indexBinding = 0;
 
+                $table = implode('.', array_map(function ($table) {
+                    return $this->buildQuotationMark($table);
+                }, array_filter(explode('.', $table))));
+
                 $fields = $this->buildFields($data, $indexBinding, self::FIELD_BINDINGS);
                 $conditions = $this->buildConditions($conditions, $indexBinding);
 
-                $query = "UPDATE {$this->buildQuotationMark($table)} SET {$fields} WHERE {$conditions['query']}";
+                $query = "UPDATE {$table} SET {$fields} WHERE {$conditions['query']}";
                 $query = $this->query($query, array_merge(array_values($data), $conditions['bindings']), true);
             }
 
@@ -211,9 +219,14 @@ class MySQL extends Base
                 foreach ($conditions as $condition) $result = array_merge($result, [$this->delete($table, $condition)]);
             } else {
                 $indexBinding = 0;
+
+                $table = implode('.', array_map(function ($table) {
+                    return $this->buildQuotationMark($table);
+                }, array_filter(explode('.', $table))));
+
                 $conditions = $this->buildConditions($conditions, $indexBinding);
 
-                $query = "DELETE FROM {$this->buildQuotationMark($table)} WHERE {$conditions['query']}";
+                $query = "DELETE FROM {$table} WHERE {$conditions['query']}";
                 $query = $this->query($query, $conditions['bindings'], true);
 
                 $result = true;
@@ -259,7 +272,9 @@ class MySQL extends Base
                     $indexBinding = 0;
                     $fieldsAlias = $this->buildFields($data, $indexBinding, self::FIELD_ALIAS);
 
-                    $table = $this->buildQuotationMark($table);
+                    $table = implode('.', array_map(function ($table) {
+                        return $this->buildQuotationMark($table);
+                    }, array_filter(explode('.', $table))));
 
                     $conditions = $this->buildConditions($conditions, $indexBinding);
                     $bindings = $this->sanitizeBindings(array_merge(array_values($data), $conditions['bindings']));

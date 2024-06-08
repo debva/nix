@@ -14,6 +14,8 @@ class Datatable
 
     protected $totalFiltered = false;
 
+    protected $limited = true;
+
     protected $data = [];
 
     protected $columns = [];
@@ -31,6 +33,11 @@ class Datatable
     protected $namingOffsetBindings = 'NIX_DT_OFFSET';
 
     public function __construct($data = [])
+    {
+        $this->data = $data;
+    }
+
+    public function builder($data = [])
     {
         $request = request('datatable');
         $request = array_merge(['page' => 1, 'limit' => 10], (is_null($request) || !is_array($request)) ? [] : $request);
@@ -216,13 +223,22 @@ class Datatable
 
             $this->total = count($data);
             $this->totalFiltered = $isFiltered ? count($result) : false;
-            $this->data = array_slice($result, $this->offset, $this->limit);
+            $this->data = $this->limited ? array_slice($result, $this->offset, $this->limit) : $result;
+
+            $this->offset = $this->limited ? $this->offset : 0;
+            $this->limit = $this->limited ? $this->limit : $this->total;
         }
     }
 
     public function sanitizeColumn($column)
     {
         return preg_replace('/[\s\-.]+/', '_', $column);
+    }
+
+    public function noLimit()
+    {
+        $this->limited = false;
+        return $this;
     }
 
     public function columns($columns = [])
@@ -239,6 +255,8 @@ class Datatable
 
     public function getData()
     {
+        $this->builder($this->data);
+
         $this->editColumns = array_filter($this->editColumns);
 
         return array_map(function ($data) {
@@ -252,6 +270,8 @@ class Datatable
 
     public function response()
     {
+        $this->builder($this->data);
+
         $this->editColumns = array_filter($this->editColumns);
 
         $data = array_map(function ($data) {

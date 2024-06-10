@@ -223,7 +223,7 @@ class Datatable
 
             $this->total = count($data);
             $this->totalFiltered = $isFiltered ? count($result) : false;
-            $this->data = $this->limited ? array_slice($result, $this->offset, $this->limit) : $result;
+            $this->data = array_values($this->limited ? array_slice($result, $this->offset, $this->limit) : $result);
 
             $this->offset = $this->limited ? $this->offset : 0;
             $this->limit = $this->limited ? $this->limit : $this->total;

@@ -146,21 +146,30 @@ class Datatable
                 $this->totalFiltered = (int) $data->column();
             }
 
-            $placeholderLimit = $db->buildPlaceholder($indexBinding, [], $isNamedBindingType ? $this->namingLimitBindings : null);
-            $namingLimitBindings = "{$this->namingLimitBindings}_{$indexBinding}";
+            $limit = '';
 
-            $placeholderOffset = $db->buildPlaceholder($indexBinding, [], $isNamedBindingType ? $this->namingOffsetBindings : null);
-            $namingOffsetBindings = "{$this->namingOffsetBindings}_{$indexBinding}";
+            if ($this->limited) {
+                $placeholderLimit = $db->buildPlaceholder($indexBinding, [], $isNamedBindingType ? $this->namingLimitBindings : null);
+                $namingLimitBindings = "{$this->namingLimitBindings}_{$indexBinding}";
+    
+                $placeholderOffset = $db->buildPlaceholder($indexBinding, [], $isNamedBindingType ? $this->namingOffsetBindings : null);
+                $namingOffsetBindings = "{$this->namingOffsetBindings}_{$indexBinding}";
+    
+                $bindings = array_merge(
+                    $bindings,
+                    $isNamedBindingType ? [$namingLimitBindings => $this->limit] : [$this->limit],
+                    $isNamedBindingType ? [$namingOffsetBindings => $this->offset] : [$this->offset],
+                );
 
-            $bindings = array_merge(
-                $bindings,
-                $isNamedBindingType ? [$namingLimitBindings => $this->limit] : [$this->limit],
-                $isNamedBindingType ? [$namingOffsetBindings => $this->offset] : [$this->offset],
-            );
+                $limit = "LIMIT {$placeholderLimit} OFFSET {$placeholderOffset}";
+            }
 
             $query = trim("({$query}) AS {$table} {$whereQuery} {$orderQuery}");
-            $data = $db->query(trim("SELECT * FROM {$query} LIMIT {$placeholderLimit} OFFSET {$placeholderOffset}"), $bindings);
+            $data = $db->query(trim("SELECT * FROM {$query} {$limit}"), $bindings);
             $this->data = $data->get();
+            
+            $this->offset = $this->limited ? $this->offset : 0;
+            $this->limit = $this->limited ? $this->limit : $this->total;
         } else {
             $data = (empty($data) || !is_array($data)) ? [] : $data;
             $data = is_array(end($data)) ? $data : (empty($data) ? [] : [$data]);

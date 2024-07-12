@@ -53,6 +53,36 @@ class Storage
         return file_put_contents($filepath, $content);
     }
 
+    public function put($filepath, $content, $force = false)
+    {
+        $filepath = implode(DIRECTORY_SEPARATOR, [
+            $this->storagePath,
+            str_replace(['/', '\\'], DIRECTORY_SEPARATOR, trim($filepath, '\\/'))
+        ]);
+
+        if (file_exists($filepath) && !$force) return false;
+
+        if (!file_exists(dirname($filepath))) {
+            mkdir(dirname($filepath), 0755, true);
+        }
+
+        return file_put_contents($filepath, $content);
+    }
+
+    public function append($filepath, $content)
+    {
+        $filepath = implode(DIRECTORY_SEPARATOR, [
+            $this->storagePath,
+            str_replace(['/', '\\'], DIRECTORY_SEPARATOR, trim($filepath, '\\/'))
+        ]);
+
+        if (!file_exists(dirname($filepath))) {
+            mkdir(dirname($filepath), 0755, true);
+        }
+
+        return file_put_contents($filepath, $content, FILE_APPEND);
+    }
+
     public function rename($src, $dst)
     {
         $src = implode(DIRECTORY_SEPARATOR, [

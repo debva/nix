@@ -88,7 +88,7 @@ class Telegram
     public function getFileUrl($fileId)
     {
         $path = $this->getFile(['file_id' => $fileId]);
-        return isset($path->result->file_path) ? "{$this->fileUrl}{$this->token}/{$path->result->file_path}" : null;
+        return isset($path['result']['file_path']) ? "{$this->fileUrl}{$this->token}/{$path['result']['file_path']}" : null;
     }
 
     protected function send()

@@ -94,13 +94,22 @@ class Telegram
     protected function send()
     {
         try {
-            $response = file_get_contents("{$this->url}/{$this->endpoint}", false, stream_context_create([
-                'http' => [
-                    'method'  => 'POST',
-                    'content' => http_build_query($this->parameter),
-                    'header'  => "Content-type: application/x-www-form-urlencoded"
-                ]
-            ]));
+            $ch = curl_init();
+
+            if (in_array($this->endpoint, ['sendDocument', 'sendPhoto'])) {
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type:multipart/form-data"]);
+            }
+
+            curl_setopt($ch, CURLOPT_URL, "{$this->url}/{$this->endpoint}");
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $this->parameter);
+
+            $response = curl_exec($ch);
+
+            if (curl_errno($ch)) {
+                throw new \Exception('Error: ' . curl_error($ch), 500);
+            }
 
             return json_decode($response, true);
         } catch (\Exception $e) {
@@ -114,10 +123,11 @@ class Telegram
             'setWebhook',
             'sendMessage',
             'editMessageText',
-
+            'deleteMessage',
+            'sendDocument',
+            'sendPhoto',
             'getUserProfilePhotos',
             'getFile'
-
         ];
     }
 }

@@ -85,9 +85,9 @@ class Telegram
         return $authData;
     }
 
-    public function getFileUrl($fileId)
+    public function getFileUrl($fileId, $path = null)
     {
-        $path = $this->getFile(['file_id' => $fileId]);
+        $path = $path ? $path : $this->getFile(['file_id' => $fileId]);
         return isset($path['result']['file_path']) ? "{$this->fileUrl}{$this->token}/{$path['result']['file_path']}" : null;
     }
 

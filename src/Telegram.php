@@ -103,6 +103,7 @@ class Telegram
             curl_setopt($ch, CURLOPT_URL, "{$this->url}/{$this->endpoint}");
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $this->parameter);
 
             $response = curl_exec($ch);

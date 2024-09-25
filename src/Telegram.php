@@ -122,6 +122,7 @@ class Telegram
     {
         return [
             'setWebhook',
+            'getWebHookInfo',
             'sendMessage',
             'editMessageText',
             'deleteMessage',

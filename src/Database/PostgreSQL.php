@@ -266,10 +266,6 @@ class PostgreSQL extends Base
 
                 $fields = $this->buildFields($data);
 
-                $table = implode('.', array_map(function ($table) {
-                    return $this->buildQuotationMark($table);
-                }, array_filter(explode('.', $table))));
-
                 if (empty($conditions)) {
                     $result = $this->create($table, $data);
                 } else {
@@ -278,6 +274,10 @@ class PostgreSQL extends Base
 
                     $indexBinding = 0;
                     $fieldsAlias = $this->buildFields($data, $indexBinding, self::FIELD_ALIAS);
+
+                    $table = implode('.', array_map(function ($table) {
+                        return $this->buildQuotationMark($table);
+                    }, array_filter(explode('.', $table))));
 
                     $returning = $this->getPrimaryKey() ? "RETURNING {$this->buildQuotationMark($this->primaryKey)}" : '';
 

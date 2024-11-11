@@ -105,6 +105,8 @@ class Telegram
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, 30);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $this->parameter);
+            curl_setopt($ch, CURLOPT_DNS_USE_GLOBAL_CACHE, false);
+            curl_setopt($ch, CURLOPT_DNS_CACHE_TIMEOUT, 2);
 
             $response = curl_exec($ch);
 
